@@ -1,0 +1,408 @@
+---
+title: "Data624 - Homework1"
+author: "Amit Kapoor"
+date: "02/06/2021"
+output:
+  pdf_document: default
+  html_document: null
+  theme: journal
+  toc: yes
+  toc_depth: 4
+  toc_float: yes
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r include=TRUE, message=FALSE, warning=FALSE}
+library(fpp2)
+```
+
+
+
+
+### Exercise {.tabset .tabset-fade .tabset-pills}
+
+#### 2.1
+Use the help function to explore what the series gold, woolyrnq and gas represent.
+
+```{r}
+?gold
+?woolyrnq
+?gas
+```
+
+* gold: Daily morning gold prices in US dollars. 1 January 1985 – 31 March 1989.
+* woolyrnq: Quarterly production of woollen yarn in Australia: tonnes. Mar 1965 – Sep 1994.
+* gas: Australian monthly gas production: 1956–1995.
+
+a. Use autoplot() to plot each of these in separate plots.
+
+```{r ap-gold}
+autoplot(gold)
+```
+
+```{r ap-wool}
+autoplot(woolyrnq)
+```
+
+```{r ap-gas}
+autoplot(gas)
+```
+
+
+b. What is the frequency of each series? Hint: apply the frequency() function.
+
+```{r freq-gold}
+frequency(gold)
+```
+
+
+```{r freq-wool}
+frequency(woolyrnq)
+```
+
+
+```{r freq-gas}
+frequency(gas)
+```
+
+gold, woolyrng and gas are yearly, quarterly and monthly time series respectively.
+
+
+c. Use which.max() to spot the outlier in the gold series. Which observation was it?
+
+```{r mx-gold}
+which.max(gold)
+```
+
+```{r val-mx}
+#outlier value
+gold[which.max(gold)]
+```
+
+It is 770 observation having gold price as 593.7.
+
+
+
+#### 2.2
+Download the file tute1.csv from the book website, open it in Excel (or some other spreadsheet application), and review its contents. You should find four columns of information. Columns B through D each contain a quarterly series, labelled Sales, AdBudget and GDP. Sales contains the quarterly sales for a small company over the period 1981-2005. AdBudget is the advertising budget and GDP is the gross domestic product. All series have been adjusted for inflation.
+
+a. You can read the data into R with the following script
+
+```{r read-csv}
+tute1 <- read.csv("https://otexts.com/fpp2/extrafiles/tute1.csv", header=TRUE)
+head(tute1)
+```
+
+
+b. Convert the data to time series
+
+```{r conv-data}
+mytimeseries <- ts(tute1[,-1], start=1981, frequency = 4)
+head(mytimeseries)
+```
+
+
+c. Construct time series plots of each of the three series.
+
+```{r ap-1}
+autoplot(mytimeseries, facets = TRUE)
+```
+
+Check what happens when you don’t include facets=TRUE?
+
+If we don't include facets=TRUE, it gets plotted on single axis and each series is assigned a color.
+
+
+```{r ap-2}
+autoplot(mytimeseries)
+```
+
+
+#### 2.3
+Download some monthly Australian retail data from the book website. These represent retail sales in various categories for different Australian states, and are stored in a MS-Excel file
+
+a. You can read the data into R with the following script
+
+```{r reead-retail}
+retaildata <- readxl::read_excel("retail.xlsx", skip=1)
+head(retaildata)
+```
+
+
+
+b. Select one of the time series as follows (but replace the column name with your own chosen column)
+
+
+```{r ts}
+myts <- ts(retaildata[,"A3349627V"], frequency=12, start=c(1982,4))
+head(myts)
+```
+
+
+
+
+c. Explore your chosen retail time series using the following functions:
+
+autoplot(), ggseasonplot(), ggsubseriesplot(), gglagplot(), ggAcf()
+
+
+```{r ap}
+autoplot(myts)
+```
+
+
+```{r season}
+ggseasonplot(myts)
+```
+
+
+```{r sub}
+ggsubseriesplot(myts)
+```
+
+
+```{r gglag}
+gglagplot(myts)
+```
+
+
+```{r acf}
+ggAcf(myts)
+```
+
+* Can you spot any seasonality, cyclicity and trend? 
+
+There is a clear annual seasonality increase in retail sales from October to December. I see a consistent upward trend and dont see cyclicity.
+
+* What do you learn about the series?
+
+There is an increase in retail season is the Christmas shopping season. The trend seems rising until the 1990 where it gets flattened out for alomost a decade. After 2000 the trend continues to go up.
+
+
+#### 2.6
+
+Use the following graphics functions: autoplot(), ggseasonplot(), ggsubseriesplot(), gglagplot(), ggAcf() and explore features from the following time series: hsales, usdeaths, bricksq, sunspotarea, gasoline.
+
+
+##### Time series {.tabset .tabset-fade .tabset-pills}
+
+###### hsales
+
+hsales - Monthly sales of new one-family houses sold in the USA since 1973.
+
+```{r hsales}
+?hsales
+```
+
+
+```{r ap-hs}
+autoplot(hsales)
+```
+
+```{r seas-hp}
+ggseasonplot(hsales)
+```
+
+
+```{r sub-hp}
+ggsubseriesplot(hsales)
+```
+
+
+```{r lag-hp}
+gglagplot(hsales)
+```
+
+
+```{r acf-hp}
+ggAcf(hsales)
+```
+
+a. Can you spot any seasonality, cyclicity and trend?
+
+Seasonal and subseries plot shows the peak of sales of new one-family houses in March and trough in December so  there is a seasonality in data. In approx every 10 years, I see a decrease in home sales. The lagplot shows strong linear relationship at lag 1 which keep on getting weak in upcoming lags until lag 12, that again shows the seasonality in data.
+
+b. What do you learn about the series?
+
+Realtors are going to be busy through Spring (March to May) as the home sale is highest during this time.
+
+
+
+###### usdeaths
+
+usdeaths - Monthly accidental deaths in USA.
+
+```{r usdeaths}
+?usdeaths
+```
+
+
+
+```{r ap-us}
+autoplot(usdeaths)
+```
+
+```{r seas-us}
+ggseasonplot(usdeaths)
+```
+
+
+```{r sub-us}
+ggsubseriesplot(usdeaths)
+```
+
+
+```{r lag-us}
+gglagplot(usdeaths)
+```
+
+
+```{r acf-us}
+ggAcf(usdeaths)
+```
+
+a. Can you spot any seasonality, cyclicity and trend?
+
+I see annual seasonality in usdeaths data having peak in July and trough in Feb. No trend or cyclicity observed. The lag plot 12 has strongest linear relationship.
+
+
+b. What do you learn about the series?
+
+US has highest accidental deaths in July.
+
+
+###### bricksq
+
+bricksq - Australian quarterly clay brick production: 1956–1994.
+
+```{r brick}
+?bricksq
+```
+
+
+```{r ap-br}
+autoplot(bricksq)
+```
+
+```{r seas-br}
+ggseasonplot(bricksq)
+```
+
+
+```{r sub-br}
+ggsubseriesplot(bricksq)
+```
+
+
+```{r lag-br}
+gglagplot(bricksq)
+```
+
+
+```{r acf-br}
+ggAcf(bricksq)
+```
+
+
+a. Can you spot any seasonality, cyclicity and trend?
+
+Annual seasonality with peak at Q3 and trough at Q1. Generally it shows an upward trend till 1980. I also see a cyclic behavior in 8 year. The lagplot shows string linear relationship at lag 1. The slow decrease in the ACF as the lags increase is due to the trend.
+
+b. What do you learn about the series?
+
+Australian quarterly clay brick production is lowest at Q1 and highest at Q3.
+
+
+
+###### sunspotarea
+
+sunspotarea - Annual averages of the daily sunspot areas (in units of millionths of a hemisphere) for the full sun.
+
+```{r sunspot}
+?sunspotarea
+```
+
+
+```{r ap-ss}
+autoplot(sunspotarea)
+```
+
+```{r seas-ss}
+#ggseasonplot(sunspotarea)
+# Data are not seasonal
+```
+
+
+```{r sub-ss}
+#ggsubseriesplot(sunspotarea)
+# Data are not seasonal
+```
+
+
+```{r lag-ss}
+gglagplot(sunspotarea)
+```
+
+
+```{r acf-ss}
+ggAcf(sunspotarea)
+```
+
+a. Can you spot any seasonality, cyclicity and trend?
+
+Don't see any trend and seasonality in plots. It appears to have cyclicity in about 10-12 years. The acf plot has positive and negative correlation peaks which confirms that each cycle in 10 - 12 years.
+
+b. What do you learn about the series?
+
+This time series does have cycle in about 10-12 years.
+
+
+###### gasoline
+
+gasoline - Weekly data beginning 2 February 1991, ending 20 January 2017. Units are "million barrels per day".
+
+```{r gas}
+?gasoline
+```
+
+
+
+```{r ap-gaso}
+autoplot(gasoline)
+```
+
+```{r seas-gas}
+ggseasonplot(gasoline)
+```
+
+
+```{r sub-gas}
+#ggsubseriesplot(gasoline)
+# Each season requires at least 2 observations. This may be caused from specifying a time-series with non-integer frequency.
+```
+
+
+```{r lag-gas}
+gglagplot(gasoline)
+```
+
+
+```{r acf-gas}
+ggAcf(gasoline)
+```
+
+
+a. Can you spot any seasonality, cyclicity and trend?
+
+This time series shows upwards trend in general and has annual seasonality. Lagplot shows strongest linear relationship at lag 1.
+
+b. What do you learn about the series?
+
+In general, the trend of gasoline supply has been going up.
+
+
