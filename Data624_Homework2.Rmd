@@ -1,0 +1,259 @@
+---
+title: "Data624 - Homework2"
+author: "Amit Kapoor"
+date: "02/18/2021"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    highlight: pygments
+    number_sections: no
+    theme: flatly
+    toc: yes
+    toc_float: yes
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r include=TRUE, message=FALSE, warning=FALSE}
+library(fpp2)
+library(gridExtra)
+```
+
+
+## 3.1 
+For the following series, find an appropriate Box-Cox transformation in order to stabilise the variance.
+
+
+```{r boxcox}
+
+# function to draw 2 plots: original and with BoxCox transformation
+plot_timeseries <- function(timeseries) {
+  lambda <- BoxCox.lambda(timeseries)
+  
+  ts_original <- autoplot(timeseries) + 
+    ggtitle(substitute(timeseries)) + 
+    xlab("Time") +
+    ylab(substitute(timeseries))
+  
+  ts_boxcox <- autoplot(BoxCox(timeseries, lambda)) + 
+    ggtitle(paste('BoxCox transformed lambda=', round(lambda,2))) + 
+    xlab("Time") +
+    ylab(paste(substitute(timeseries), " transformed"))
+  
+  grid.arrange(arrangeGrob(ts_original, ts_boxcox, ncol=1, nrow = 2))
+}
+```
+
+
+
+
+### usnetelec
+
+Annual US net electricity generation - Annual US net electricity generation (billion kwh) for 1949-2003
+
+```{r usnetelec}
+?usnetelec
+```
+
+```{r plot-1}
+plot_timeseries(usnetelec)
+```
+
+The BoxCox transformation made no apparent difference to reduce the variation in usnetelec data.Therefore no Box-Cox transformation is needed here.
+
+### usgdp
+
+Quarterly US GDP - Quarterly US GDP. 1947:1 - 2006.1.
+
+```{r usgdp}
+?usgdp
+```
+
+
+```{r plot-2}
+plot_timeseries(usgdp)
+```
+
+In this case, BoxCox transformation removed the curvature that exists in original data and could make possibility of linear regression model.
+
+
+### mcopper
+
+Monthly copper prices - Monthly copper prices. Copper, grade A, electrolytic wire bars/cathodes,LME,cash (pounds/ton) Source: UNCTAD (http://stats.unctad.org/Handbook).
+
+```{r mcopper}
+?mcopper
+```
+
+
+```{r plot-3}
+plot_timeseries(mcopper)
+```
+
+For mcopper data, I dont see any significant change after transformation so dont see a need to apply BoxCox transformation.
+
+
+### enplanements
+
+Monthly US domestic enplanements - Domestic Revenue Enplanements (millions): 1996-2000. SOURCE: Department of Transportation, Bureau of Transportation Statistics, Air Carrier Traffic Statistic Monthly.
+
+```{r enplanements}
+?enplanements
+```
+
+
+```{r plot-4}
+plot_timeseries(enplanements)
+```
+
+We could see BoxCox transformation did seasonality transformed to show seasonal jump in transformed data.
+
+## 3.2
+Why is a Box-Cox transformation unhelpful for the cangas data?
+
+```{r cangas}
+?cangas
+```
+
+
+```{r plot-5}
+plot_timeseries(cangas)
+```
+
+
+For the overall cangas data, the BoxCox transformation doesn't appear to be useful because the middle portion of the data varies much wildly than the lower and upper regions of the data. It could be if the data is separated in 3 regions but with overall data transformation doesn't make any difference.
+
+
+
+## 3.3
+What Box-Cox transformation would you select for your retail data (from Exercise 3 in Section 2.10)?
+
+```{r reead-retail}
+retaildata <- readxl::read_excel("retail.xlsx", skip=1)
+myts <- ts(retaildata[,"A3349627V"], frequency=12, start=c(1982,4))
+head(myts)
+```
+
+
+
+```{r ap}
+autoplot(myts)
+```
+
+
+```{r season}
+ggseasonplot(myts)
+```
+
+
+```{r sub}
+ggsubseriesplot(myts)
+```
+
+```{r gglag}
+gglagplot(myts)
+```
+
+
+```{r acf}
+ggAcf(myts)
+```
+
+
+```{r plot-6}
+plot_timeseries(myts)
+```
+
+Now the best lambda chosen is ~0 so BoxCox transformation would be log transformation.
+
+```{r ap-log}
+autoplot(log(myts)) + 
+    ggtitle("retail") + 
+    xlab("Time") +
+    ylab("retail")
+```
+
+
+## 3.8
+For your retail time series (from Exercise 3 in Section 2.10):
+
+### a. Split the data into two parts using.
+
+```{r split}
+myts.train <- window(myts, end=c(2010,12))
+myts.test <- window(myts, start=2011)
+```
+
+
+### b. Check that your data have been split appropriately by producing the following plot
+
+```{r ap-myts}
+autoplot(myts) +
+  autolayer(myts.train, series="Training") +
+  autolayer(myts.test, series="Test")
+```
+
+
+### c. Calculate forecasts using snaive applied to myts.train.
+
+```{r snaive}
+fc <- snaive(myts.train)
+```
+
+
+
+### d. Compare the accuracy of your forecasts against the actual values stored in myts.test.
+
+```{r acc}
+accuracy(fc,myts.test)
+```
+
+
+
+### e. Check the residuals.
+
+```{r chk-res}
+checkresiduals(fc)
+```
+
+**Do the residuals appear to be uncorrelated and normally distributed?**
+
+Based on the plots shown above, the residuals seems to be normally distributed with slightly right skewed. The ACF plot shows significant correlations between time lags of residuals. The mean of the residuals is not centered around 0 thats shows bias in forecast.
+
+### f. How sensitive are the accuracy measures to the training/test split
+
+Accuracy measures are very sensitive to split. It is shows below for different years to split the data.
+
+```{r sensitivity}
+
+# function to get accuracy based on year
+cal_acc <- function(split_yr){
+  train <- window(myts, end=c(split_yr, 12))
+  test <- window(myts, start=split_yr+1)
+  acc <- accuracy(snaive(train), test)
+  return(acc)
+}
+
+# splits
+splits <- c(2000:2011)
+
+# loop
+for (year in splits){
+  acc <- cal_acc(year)
+  print(acc)
+}
+```
+
+
+
+
+
+
+
+
+
