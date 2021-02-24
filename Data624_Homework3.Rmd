@@ -3,17 +3,71 @@ title: "Data624 - Homework3"
 author: "Amit Kapoor"
 date: "02/18/2021"
 output:
-  pdf_document:
-    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
+  pdf_document:
+    toc: yes
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+## 6.2
+The plastics data set consists of the monthly sales (in thousands) of product A for a plastics manufacturer for five years.
+
+* Plot the time series of sales of product A. Can you identify seasonal fluctuations and/or a trend-cycle?
+
+
+* Use a classical multiplicative decomposition to calculate the trend-cycle and seasonal indices.
+
+
+* Do the results support the graphical interpretation from part a?
+
+
+* Compute and plot the seasonally adjusted data.
+
+
+* Change one observation to be an outlier (e.g., add 500 to one observation), and recompute the seasonally adjusted data. What is the effect of the outlier?
+
+
+* Does it make any difference if the outlier is near the end rather than in the middle of the time series?
+
+
+
+## 6.3
+Recall your retail time series data (from Exercise 3 in Section 2.10). Decompose the series using X11. Does it reveal any outliers, or unusual features that you had not noticed previously
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
