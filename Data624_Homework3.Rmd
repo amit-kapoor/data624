@@ -21,26 +21,27 @@ knitr::opts_chunk$set(echo = TRUE)
 library(fpp2)
 library(dplyr)
 library(gridExtra)
+library(seasonal)
 ```
 
 ## 6.2
-The plastics data set consists of the monthly sales (in thousands) of product A for a plastics manufacturer for five years.
+**The plastics data set consists of the monthly sales (in thousands) of product A for a plastics manufacturer for five years.**
 
 
-```{r}
+```{r plastics}
 ?plastics
 ```
 
 plastics - Monthly sales of product A for a plastics manufacturer.
 
-```{r}
+```{r slim}
 glimpse(plastics)
 ```
 
 
-* Plot the time series of sales of product A. Can you identify seasonal fluctuations and/or a trend-cycle?
+* **Plot the time series of sales of product A. Can you identify seasonal fluctuations and/or a trend-cycle?**
 
-```{r plastics}
+```{r plot-1}
 autoplot(plastics) + 
   labs(title = "Sales of Product A", y="Sales") 
 ```
@@ -50,7 +51,7 @@ ggseasonplot(plastics, continuous = T) +
   labs(title = "Sales of Product A", y="Sales") 
 ```
 
-```{r}
+```{r subser}
 ggsubseriesplot(plastics) + 
   labs(title = "Sales of Product A", y="Sales") 
 ```
@@ -58,9 +59,9 @@ ggsubseriesplot(plastics) +
 The plot above shows strong seasonality with a positive trend. There is no strong evidence of cyclic behavior. Also seasonal plot shows increase in sale that starts from Feb with peak in June and then declines..
 
 
-* Use a classical multiplicative decomposition to calculate the trend-cycle and seasonal indices.
+* **Use a classical multiplicative decomposition to calculate the trend-cycle and seasonal indices.**
 
-```{r}
+```{r mul}
 plastics %>% decompose(type="multiplicative") %>% 
   autoplot() + 
   ggtitle("Classical multiplicative decomposition of Sales of Product A")
@@ -69,15 +70,15 @@ plastics %>% decompose(type="multiplicative") %>%
 
 
 
-* Do the results support the graphical interpretation from part a?
+* **Do the results support the graphical interpretation from part a?**
 
 The overall data shows the same upward trend as of part A. The seasonal plot here is not on the same X scale as in part A (which is in months) so a little difficult to interpret. 
 
 
-* Compute and plot the seasonally adjusted data.
+* **Compute and plot the seasonally adjusted data.**
 
 
-```{r}
+```{r adj}
 plas_decom <- plastics %>% decompose(type="multiplicative")
 
 autoplot(plastics, series = "Plastics") + 
@@ -87,15 +88,15 @@ autoplot(plastics, series = "Plastics") +
 
 
 
-* Change one observation to be an outlier (e.g., add 500 to one observation), and recompute the seasonally adjusted data. What is the effect of the outlier?
+* **Change one observation to be an outlier (e.g., add 500 to one observation), and recompute the seasonally adjusted data. What is the effect of the outlier?**
 
 
-```{r}
+```{r data}
 plastics
 ```
 
 
-```{r}
+```{r out}
 # Change one observation to be an outlier
 plastics_outlier <- plastics
 plastics_outlier[43] <- plastics_outlier[43] + 550
@@ -108,7 +109,7 @@ plastics_outlier %>% decompose(type="multiplicative") %>%
 
 
 
-```{r}
+```{r plot-out}
 
 # decomposition
 plas_out_decom <- plastics_outlier %>% decompose(type="multiplicative")
@@ -125,10 +126,10 @@ We see outlier impacted the trend more compared to seasonality of time series da
 
 
 
-* Does it make any difference if the outlier is near the end rather than in the middle of the time series?
+* **Does it make any difference if the outlier is near the end rather than in the middle of the time series?**
 
 
-```{r}
+```{r mid}
 # middle outlier
 plastics_mid <- plastics
 plastics_mid[27] <- plastics_mid[27] + 530
@@ -168,16 +169,23 @@ e2 <- autoplot(plastics_end, series = "Plastics") +
 grid.arrange(m1, m2, e1,e2, nrow=2, ncol=2)
 ```
 
-We have 2 outliers in above 2 sets of graphs. For the near middle outlier added 530 and for the near end outlier subtracted 530. It is clearly visible that no matter where the outlier added, it effects the time series trend. Almost no impact on seasonality though its variance differ based on outlier. We also notice spikes in seasonality adjusted plots based on outlier. For end outlier plots, remainder doesnt capture the outlier since classical decomposition doesnt include end points
+We have 2 outliers in above 2 sets of graphs. For the near middle outlier added 530 and for the near end outlier subtracted 530. It is clearly visible that no matter where the outlier added, it effects the time series trend. Almost no impact on seasonality though its variance differ based on outlier. We also notice spikes in seasonality adjusted plots based on outlier. For end outlier plots, remainder doesnt capture the outlier since classical decomposition doesn't include end points
 
 
 ## 6.3
-Recall your retail time series data (from Exercise 3 in Section 2.10). Decompose the series using X11. Does it reveal any outliers, or unusual features that you had not noticed previously
+**Recall your retail time series data (from Exercise 3 in Section 2.10). Decompose the series using X11. Does it reveal any outliers, or unusual features that you had not noticed previously?**
 
 
+```{r read-retail}
+retaildata <- readxl::read_excel("retail.xlsx", skip=1)
+myts <- ts(retaildata[,"A3349627V"], frequency=12, start=c(1982,4))
 
 
+myts %>% seas(x11="") %>% autoplot()
+```
 
+
+X-11 decomposition reveals trend and seasonality remain consistent but remainder does show spikes near the year 1990, confirming outlier. Trend seems increasing over the time. This retail data shows strong trend and seasonality.
 
 
 
