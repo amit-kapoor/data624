@@ -1,0 +1,19 @@
+---
+title: "Data624 - Homework4"
+author: "Amit Kapoor"
+date: "2/28/2021"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    highlight: pygments
+    number_sections: no
+    theme: flatly
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
