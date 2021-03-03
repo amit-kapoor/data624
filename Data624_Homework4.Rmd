@@ -20,6 +20,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r include=TRUE, message=FALSE, warning=FALSE}
 library(mlbench)
+library(DataExplorer)
+library(GGally)
 ```
 
 ## 3.1
@@ -27,7 +29,7 @@ library(mlbench)
 
 The data can be accessed via:
 
-```{r}
+```{r loadData}
 data(Glass)
 str(Glass)
 ```
@@ -35,6 +37,28 @@ str(Glass)
 
 
 **(a) Using visualizations, explore the predictor variables to understand their distributions as well as the relationships between predictors.**
+
+```{r}
+plot_histogram(Glass, 
+               geom_histogram_args = list(bins = 30L), 
+               nrow = 3L,
+               ncol = 3L)
+```
+
+```{r}
+Glass %>% 
+  dplyr::select(-Type) %>%
+  ggpairs(title = "Paiwise scatter plots") %>% 
+  print(progress = F)
+```
+
+
+```{r}
+Glass %>% 
+  dplyr::select(-Type) %>%
+  ggcorr(label = TRUE)
+```
+
 
 
 **(b) Do there appear to be any outliers in the data? Are any predictors skewed?**
