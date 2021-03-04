@@ -3,14 +3,14 @@ title: "Data624 - Homework4"
 author: "Amit Kapoor"
 date: "2/28/2021"
 output:
+  pdf_document:
+    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
-  pdf_document:
-    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -22,6 +22,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(mlbench)
 library(DataExplorer)
 library(GGally)
+library(psych)
 ```
 
 ## 3.1
@@ -39,13 +40,15 @@ str(Glass)
 **(a) Using visualizations, explore the predictor variables to understand their distributions as well as the relationships between predictors.**
 
 ```{r}
+# predictors distribution
 plot_histogram(Glass, 
                geom_histogram_args = list(bins = 30L), 
                nrow = 3L,
                ncol = 3L)
 ```
 
-```{r}
+```{r message=FALSE, warning=FALSE}
+# scatterplot matrix
 Glass %>% 
   dplyr::select(-Type) %>%
   ggpairs(title = "Paiwise scatter plots") %>% 
@@ -54,6 +57,7 @@ Glass %>%
 
 
 ```{r}
+# correlation
 Glass %>% 
   dplyr::select(-Type) %>%
   ggcorr(label = TRUE)
@@ -62,6 +66,27 @@ Glass %>%
 
 
 **(b) Do there appear to be any outliers in the data? Are any predictors skewed?**
+
+
+```{r}
+describe(Glass)
+```
+
+
+```{r}
+label <- function(var) {
+  return( paste("skew=" , round(describe(var)$skew,2) , "outliers=" , length(boxplot(var, plot=FALSE)$out)) )
+}
+
+par(mfrow=c(3,3))
+for (i in 1:9){
+  boxplot(
+    Glass[i], color='green', horizontal = T, 
+    xlab = label(Glass[i])
+    )
+}
+```
+
 
 
 **(c) Are there any relevant transformations of one or more predictors that might improve the classification model?**
