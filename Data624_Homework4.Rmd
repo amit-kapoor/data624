@@ -23,6 +23,7 @@ library(mlbench)
 library(DataExplorer)
 library(GGally)
 library(psych)
+library(caret)
 ```
 
 ## 3.1
@@ -74,6 +75,7 @@ describe(Glass)
 
 
 ```{r}
+# function to get skewness and number of outliers
 label <- function(var) {
   return( paste("skew=" , round(describe(var)$skew,2) , "outliers=" , length(boxplot(var, plot=FALSE)$out)) )
 }
@@ -92,6 +94,75 @@ for (i in 1:9){
 **(c) Are there any relevant transformations of one or more predictors that might improve the classification model?**
 
 
+
+
+
+```{r}
+glass_boxcox_t <- preProcess(Glass, method = c("BoxCox"))
+glass_boxcox_t
+```
+
+
+
+
+```{r}
+trans_boxcox <- predict(glass_boxcox_t, Glass)
+```
+
+
+
+
+
+```{r}
+plot_histogram(trans_boxcox, 
+               geom_histogram_args = list(bins = 30L), 
+               nrow = 3L,
+               ncol = 3L)
+```
+
+
+
+
+```{r message=FALSE, warning=FALSE}
+# scatterplot matrix
+trans_boxcox %>% 
+  #dplyr::select(-Type) %>%
+  ggpairs(title = "Paiwise scatter plots") %>% 
+  print(progress = F)
+```
+
+
+
+
+```{r}
+glass_bcpca_t <- preProcess(Glass, method = c("BoxCox", "pca"))
+glass_bcpca_t
+```
+
+
+
+
+```{r}
+trans_bcpca <- predict(glass_bcpca_t, Glass)
+```
+
+
+
+```{r}
+plot_histogram(trans_bcpca, 
+               geom_histogram_args = list(bins = 30L), 
+               nrow = 3L,
+               ncol = 3L)
+```
+
+
+```{r message=FALSE, warning=FALSE}
+# scatterplot matrix
+trans_bcpca %>% 
+  #dplyr::select(-Type) %>%
+  ggpairs(title = "Paiwise scatter plots") %>% 
+  print(progress = F)
+```
 
 
 ## 3.2
