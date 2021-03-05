@@ -24,6 +24,7 @@ library(DataExplorer)
 library(GGally)
 library(psych)
 library(caret)
+library(summarytools)
 ```
 
 ## 3.1
@@ -177,6 +178,10 @@ str(Soybean)
 
 
 **(a) Investigate the frequency distributions for the categorical predictors. Are any of the distributions degenerate in the ways discussed earlier in this chapter?**
+
+```{r}
+dfSummary(Soybean, graph.col = F)
+```
 
 
 **(b) Roughly 18% of the data are missing. Are there particular predictors that are more likely to be missing? Is the pattern of missing data related to the classes?**
