@@ -25,6 +25,7 @@ library(GGally)
 library(psych)
 library(caret)
 library(summarytools)
+library(naniar)
 ```
 
 ## 3.1
@@ -185,6 +186,15 @@ dfSummary(Soybean, graph.col = F)
 
 
 **(b) Roughly 18% of the data are missing. Are there particular predictors that are more likely to be missing? Is the pattern of missing data related to the classes?**
+
+
+```{r}
+gg_miss_var(Soybean) + labs(y = "All missing ones")
+```
+
+```{r}
+gg_miss_fct(x=Soybean, fct=Class)
+```
 
 
 **(c) Develop a strategy for handling missing data, either by eliminating predictors or imputation.**
