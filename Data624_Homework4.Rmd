@@ -150,7 +150,7 @@ trans_boxcox %>%
 ```
 
 
-**BoxCox Transformation and PCA**
+**BoxCox and PCA Transformation**
 
 
 ```{r trans-bcpca}
