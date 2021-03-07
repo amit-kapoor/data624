@@ -20,12 +20,15 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r include=TRUE, message=FALSE, warning=FALSE}
 library(mlbench)
+library(VIM)
 library(DataExplorer)
 library(GGally)
 library(psych)
 library(caret)
 library(summarytools)
 library(naniar)
+library(dplyr)
+library(Amelia)
 ```
 
 ## 3.1
@@ -40,8 +43,8 @@ str(Glass)
 ```
 
 
-
-**(a) Using visualizations, explore the predictor variables to understand their distributions as well as the relationships between predictors.**
+### (a)
+**Using visualizations, explore the predictor variables to understand their distributions as well as the relationships between predictors.**
 
 ```{r}
 # predictors distribution
@@ -74,7 +77,8 @@ Glass %>%
 Above graphs depict the scatterplots and correlation among the predictors. It is evident that RI and Ca are strongly correlated. There are few other predictors having moderate correlation.
 
 
-**(b) Do there appear to be any outliers in the data? Are any predictors skewed?**
+### (b)
+**Do there appear to be any outliers in the data? Are any predictors skewed?**
 
 
 ```{r desc-glass}
@@ -104,7 +108,8 @@ for (i in 1:9){
 With these boxplots, we can see the skewness measure and number of outliers for all predictors in the data. Ba and Ca have most of the outliers. Also Mg doesn't show up any outliers but its distribution seems left skewed.
 
 
-**(c) Are there any relevant transformations of one or more predictors that might improve the classification model?**
+### (c)
+**Are there any relevant transformations of one or more predictors that might improve the classification model?**
 
 As seen above, the variables in dataset are skewed so we will try the BoxCox transformation first to see if it improves them to an extent. Next we will try the transformation using BoxCox and PCA both if that makes any difference compared to the first one (with only BoxCox), The reason for using PCA is some variables showing correlations and we will see if PCA could improve that.
 
@@ -195,7 +200,8 @@ str(Soybean)
 ```
 
 
-**(a) Investigate the frequency distributions for the categorical predictors. Are any of the distributions degenerate in the ways discussed earlier in this chapter?**
+### (a)
+**Investigate the frequency distributions for the categorical predictors. Are any of the distributions degenerate in the ways discussed earlier in this chapter?**
 
 ```{r summ-sb}
 # summary
@@ -220,20 +226,48 @@ names(Soybean)[nzvs]
 There are three variables leaf.mild, mycelium and sclerotia that have a non zero variance and it would be good to remove these variables from the model.
 
 
+### (b)
+**Roughly 18% of the data are missing. Are there particular predictors that are more likely to be missing? Is the pattern of missing data related to the classes?**
 
-**(b) Roughly 18% of the data are missing. Are there particular predictors that are more likely to be missing? Is the pattern of missing data related to the classes?**
 
-
-```{r}
+```{r miss-var}
 gg_miss_var(Soybean) + labs(y = "All missing ones")
 ```
 
-```{r}
+```{r miss-fct}
 gg_miss_fct(x=Soybean, fct=Class)
 ```
 
 
-**(c) Develop a strategy for handling missing data, either by eliminating predictors or imputation.**
+Based on above graphs, the predictors having most of the missing values are sever, seed.tmt, lodging and hall. Also within Class response variable, it seems like most of the missing data is in 'phytophthora-rot' followed by '2-4-d-injury'.  The most common one between all these NA's is cyst-nematode. Looking at the NA's, there seems to be a pattern appearing as few numbers are getting repeated like sever, seed.tmt, lodging and hall, are missing 121 values.
+
+
+```{r summ-case}
+# incomplete cases by Class variable
+Soybean[which(!complete.cases(Soybean)),] %>% 
+  group_by(Class) %>%
+  summarise(Count = n())
+```
+
+
+### (c)
+**Develop a strategy for handling missing data, either by eliminating predictors or imputation.**
+
+As mentioned in 3.2 (a) above, there are three variables leaf.mild, mycelium and sclerotia that have a non zero variance and it would be good to remove these variables from the model. Since the dataset is not big so imputation is a better strategy for handling missing data. Since we need to replace NAs with values that make the most sense based on previous common entries, we have used kNN here.
+
+```{r knn}
+Soybean_final <- Soybean %>% 
+  select(-leaf.mild, -mycelium, -sclerotia) %>% kNN()
+```
+
+
+```{r}
+Soybean_final %>%
+  arrange(Class) %>%
+  missmap(main = "Missing vs Observed")
+```
+
+
 
 
 
