@@ -33,7 +33,8 @@ library(naniar)
 
 The data can be accessed via:
 
-```{r loadData}
+```{r loadGlass}
+# load Glass data
 data(Glass)
 str(Glass)
 ```
@@ -50,7 +51,11 @@ plot_histogram(Glass,
                ncol = 3L)
 ```
 
-```{r message=FALSE, warning=FALSE}
+
+The plots above represent the distribution of predictors in the data. They could be used to compare the distributions against the normal distribution.AI, Na, Si appears nearly normal distributed with slight skewness while Ba, Ca, Fe, k and RI are right skewed. 
+
+
+```{r sp-glass, message=FALSE, warning=FALSE}
 # scatterplot matrix
 Glass %>% 
   dplyr::select(-Type) %>%
@@ -59,63 +64,69 @@ Glass %>%
 ```
 
 
-```{r}
+```{r corr-glass}
 # correlation
 Glass %>% 
   dplyr::select(-Type) %>%
   ggcorr(label = TRUE)
 ```
 
+Above graphs depict the scatterplots and correlation among the predictors. It is evident that RI and Ca are strongly correlated. There are few other predictors having moderate correlation.
 
 
 **(b) Do there appear to be any outliers in the data? Are any predictors skewed?**
 
 
-```{r}
+```{r desc-glass}
 describe(Glass)
 ```
 
 
-```{r}
-# function to get skewness and number of outliers
+```{r outl-glass}
+# function to get skewness and number of outliers for given var
 label <- function(var) {
   return( paste("skew=" , round(describe(var)$skew,2) , "outliers=" , length(boxplot(var, plot=FALSE)$out)) )
 }
 
 par(mfrow=c(3,3))
+# draw boxplot of predictors
 for (i in 1:9){
   boxplot(
-    Glass[i], color='green', horizontal = T, 
+    Glass[i], 
+    color='green', 
+    horizontal = T, 
+    main = names(Glass)[i],
     xlab = label(Glass[i])
     )
 }
 ```
 
+With these boxplots, we can see the skewness measure and number of outliers for all predictors in the data. Ba and Ca have most of the outliers. Also Mg doesn't show up any outliers but its distribution seems left skewed.
 
 
 **(c) Are there any relevant transformations of one or more predictors that might improve the classification model?**
 
+As seen above, the variables in dataset are skewed so we will try the BoxCox transformation first to see if it improves them to an extent. Next we will try the transformation using BoxCox and PCA both if that makes any difference compared to the first one (with only BoxCox), The reason for using PCA is some variables showing correlations and we will see if PCA could improve that.
 
+**BoxCox Transformation**
 
-
-
-```{r}
+```{r bc-trans}
+# preprocess using BoxCox
 glass_boxcox_t <- preProcess(Glass, method = c("BoxCox"))
 glass_boxcox_t
 ```
 
 
 
-
-```{r}
+```{r pred-bc}
+# predict using boxcox transformation
 trans_boxcox <- predict(glass_boxcox_t, Glass)
 ```
 
 
 
-
-
-```{r}
+```{r hist-bc}
+# plot histogram
 plot_histogram(trans_boxcox, 
                geom_histogram_args = list(bins = 30L), 
                nrow = 3L,
@@ -125,18 +136,19 @@ plot_histogram(trans_boxcox,
 
 
 
-```{r message=FALSE, warning=FALSE}
+```{r ggpair-bc, message=FALSE, warning=FALSE}
 # scatterplot matrix
 trans_boxcox %>% 
-  #dplyr::select(-Type) %>%
+  dplyr::select(-Type) %>%
   ggpairs(title = "Paiwise scatter plots") %>% 
   print(progress = F)
 ```
 
 
+**BoxCox Transformation and PCA**
 
 
-```{r}
+```{r trans-bcpca}
 glass_bcpca_t <- preProcess(Glass, method = c("BoxCox", "pca"))
 glass_bcpca_t
 ```
@@ -144,13 +156,15 @@ glass_bcpca_t
 
 
 
-```{r}
+```{r pred-bcpca}
+# predict with BoxCox and PCA transformation
 trans_bcpca <- predict(glass_bcpca_t, Glass)
 ```
 
 
 
-```{r}
+```{r hist-bcpca}
+# plot histogram
 plot_histogram(trans_bcpca, 
                geom_histogram_args = list(bins = 30L), 
                nrow = 3L,
@@ -158,13 +172,16 @@ plot_histogram(trans_bcpca,
 ```
 
 
-```{r message=FALSE, warning=FALSE}
+```{r ggpair-bcpca, message=FALSE, warning=FALSE}
 # scatterplot matrix
 trans_bcpca %>% 
-  #dplyr::select(-Type) %>%
+  dplyr::select(-Type) %>%
   ggpairs(title = "Paiwise scatter plots") %>% 
   print(progress = F)
 ```
+
+We see BoxCox+PCA transformation makes the result better as compared to BoxCox only. BoxCox and PCA transformation makes the distribution a lot better and more towards normal distribution. Also it is evident that now it doesnt show any correlation.
+
 
 
 ## 3.2
@@ -180,9 +197,28 @@ str(Soybean)
 
 **(a) Investigate the frequency distributions for the categorical predictors. Are any of the distributions degenerate in the ways discussed earlier in this chapter?**
 
-```{r}
+```{r summ-sb}
+# summary
 dfSummary(Soybean, graph.col = F)
 ```
+
+This tables shows the frequesncy distribution of Soybean dataset. The data has 683 rows and 36 variables. There are 35 predictors in the data and 'Class' is the response variable. There are 19 classes for response variable 'Class'. All predictors are numeric categorical variables.
+
+
+From [link](https://www.statisticshowto.com/degenerate-distribution/), A degenerate distribution (sometimes called a constant distribution) is a distribution of a degenerate random variable — a constant with probability of 1. In other words, a random variable X has a single possible value. In other words, A random variable, X, is degenerate if, for some a constant, c, P(X = c) = 1.
+
+The nearZeroVar function could be used to find the degenrate variables here.
+
+
+```{r nzv}
+# find degenerate vars
+nzvs <- nearZeroVar(Soybean)
+names(Soybean)[nzvs]
+```
+
+
+There are three variables leaf.mild, mycelium and sclerotia that have a non zero variance and it would be good to remove these variables from the model.
+
 
 
 **(b) Roughly 18% of the data are missing. Are there particular predictors that are more likely to be missing? Is the pattern of missing data related to the classes?**
