@@ -59,6 +59,22 @@ autoplot(pigs_ses) +
 ## b)
 Compute a 95% prediction interval for the first forecast using $\hat{y} \pm 1.96 \sigma$ where $\sigma$ is the standard deviation of the residuals. Compare your interval with the interval produced by R.
 
+```{r formula}
+# 95% prediction interval for the first forecas
+sd <- sd(residuals(pigs_ses))
+ci95 <- c(lower = pigs_ses$mean[1] - 1.96*sd, upper = pigs_ses$mean[1] + 1.96*sd)
+ci95
+```
+
+
+```{r byR}
+# By R
+ci95_R <- c(pigs_ses$lower[1, "95%"], pigs_ses$upper[1, "95%"])
+names(ci95_R) <- c("lower", "upper")
+ci95_R
+```
+
+It appears the 95% prediction interval calculated by R is a little wider than the one given by the formula.
 
 
 # Exercise 7.5
