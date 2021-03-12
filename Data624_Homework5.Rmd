@@ -80,17 +80,52 @@ It appears the 95% prediction interval calculated by R is a little wider than th
 # Exercise 7.5
 Data set `books` contains the daily sales of paperback and hardcover books at the same store. The task is to forecast the next four days’ sales for paperback and hardcover books.
 
+```{r books}
+head(books)
+```
+
+
+
+
 ## a)
 Plot the series and discuss the main features of the data.
 
+```{r plot-books}
+# plot series
+autoplot(books) + 
+  labs(title = "Daily Sales of Paperback and Hardcover Books")
+```
+
+The series has an upward trend but don't see any seasonality or cyclicity in the plot. Also its only a 30 days of data so difficult to speak about seasonality. Another observation is hardcover sales in better than paperback.
 
 ## b)
 Use the `ses()` function to forecast each series, and plot the forecasts.
 
+```{r ses-books}
+# Using ses for pigs
+pb_ses <- ses(books[, 'Paperback'], h=4)
+hc_ses <- ses(books[, 'Hardcover'], h=4)
+
+autoplot(books) +
+  autolayer(pb_ses, series="Paperback", PI=FALSE) +
+  autolayer(hc_ses, series="Hardcover", PI=FALSE)
+```
+
+The simple exponential smoothing plot above shows flat forecast and doesnt appear to capture upward trend.
 
 ## c)
 Compute the RMSE values for the training data in each case.
 
+```{r rmse1}
+# RMSE for paperback
+round(accuracy(pb_ses)[2], 2)
+```
+
+
+```{r rmse2}
+# RMSE for hardcover
+round(accuracy(hc_ses)[2], 2)
+```
 
 # Exercise 7.6
 We will continue with the daily sales of paperback and hardcover books in data set books.
