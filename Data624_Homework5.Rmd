@@ -3,14 +3,14 @@ title: "Data624 - Homework4"
 author: "Amit Kapoor"
 date: "2/28/2021"
 output:
-  pdf_document:
-    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
+  pdf_document:
+    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -18,11 +18,42 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
+```{r loadData, include=FALSE}
+# Libraries
+library(fpp2)
+```
+
 # Exercise 7.1
 Consider the `pigs` series — the number of pigs slaughtered in Victoria each month.
 
+```{r}
+str(pigs)
+```
+
+
+
 ## a)
 Use the `ses()` function in R to find the optimal values of $\alpha$ and $\ell_0$, and generate forecasts for the next four months.
+
+
+```{r ses-pigs}
+# Using ses for pigs
+pigs_ses <- ses(pigs, h=4)
+
+#summary
+summary(pigs_ses)
+```
+
+Above summary shows the the optimal values of $\alpha$ and $\ell_0$ are 0.2971 and 77260.0561 respectively. Using these values forecast is generated for next 4 months.
+
+Next plot shows the forecast from simple exponential smoothing. Also one-step-ahead fitted values are plotted with the data over the period.
+
+```{r}
+autoplot(pigs_ses) +
+  autolayer(fitted(pigs_ses), series="Fitted") +
+  ylab("Number of pigs slaughtered in Victoria")
+```
+
 
 
 ## b)
@@ -101,8 +132,6 @@ Now find the test set RMSE while training the model to the end of 2010. Can you 
 
 # Exercise 7.9
 For the same retail data, try an STL decomposition applied to the Box-Cox transformed series, followed by ETS on the seasonally adjusted data. How does that compare with your best previous forecasts on the test set?
-
-
 
 
 
