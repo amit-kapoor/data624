@@ -3,14 +3,14 @@ title: "Data624 - Homework4"
 author: "Amit Kapoor"
 date: "2/28/2021"
 output:
+  pdf_document:
+    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
-  pdf_document:
-    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -172,7 +172,7 @@ The RMSEs for paperback and hardcover books sale are improved using holt's linea
 Compare the forecasts for the two series using both methods. Which do you think is best?
 
 
-```{r}
+```{r comp}
 # ses and holt comparison for paperback
 s1 <- autoplot(pb_ses) + 
   ylab("paperback book sales") + 
@@ -199,7 +199,7 @@ Compare the forecasts for the two series using the two, Holt's method is better 
 ## d)
 Calculate a 95% prediction interval for the first forecast for each series, using the RMSE values and assuming normal errors. Compare your intervals with those produced using `ses` and `holt`.
 
-```{r}
+```{r rmse}
 # 95% prediction interval for the first forecast
 df <- data.frame(
   Pred_Int = c("Paperback-SES", "Paperback-Holt","Hardcover-SES", "Hardcover-Holt"),
@@ -217,7 +217,7 @@ df
 ```
 
 
-```{r}
+```{r holt-ses}
 df2 <- data.frame(
   Pred_Int = c("Paperback-SES", "Paperback-Holt","Hardcover-SES", "Hardcover-Holt"),
   lower = c(pb_ses$lower[1, "95%"],
@@ -242,30 +242,216 @@ For this exercise use data set `eggs`, the price of a dozen eggs in the United S
 
 Which model gives the best RMSE?
 
+```{r eggs}
+head(eggs)
+```
+
+
+```{r ap-eggs}
+autoplot(eggs) + 
+  labs(title = "Price of a dozen eggs in the United States from 1900–1993")
+```
+
+The time series shows the downward trend. It has the frequency as 1 that shows yearly record. We will perform forecast using below methods:
+
+* Holt's
+* Holts with damped trend
+* Box-Cox transformation
+* Box-Cox with damped trend
+* Exponential
+* Exponential with damped trend
+
+```{r warning=FALSE}
+h <- 100
+
+# holts 
+eggs_holt <- holt(eggs, h=h)
+# holts with damped trend
+eggs_damped <- holt(eggs, h=h, damped = T)
+# Box-Cox transformation
+eggs_boxcox <- holt(eggs, h=h, lambda = "auto")
+# Box-Cox with damped trend
+eggs_boxcox_d <- holt(eggs, h=h, lambda = "auto", damped = T)
+# exponential
+eggs_exp <- holt(eggs, h=h, exponential = T)
+# exponential with damped trend
+eggs_exp_d <- holt(eggs, h=h, exponential = T, damped = T)
+```
+
+
+
+```{r holts}
+# Forcast from holt's
+autoplot(eggs_holt)
+```
+
+
+```{r damped-holt}
+# Forecast from damped holt's
+autoplot(eggs_damped)
+```
+
+
+```{r boxcox-holts}
+# forecast from boxcox transformation
+autoplot(eggs_boxcox) + 
+  labs(title = "Forecast using BoxCox Transformation")
+```
+
+```{r}
+# forecast from damped boxcox transformation
+autoplot(eggs_boxcox_d) + 
+  labs(title = "Forecast using Damped BoxCox Transformation")
+```
+
+```{r}
+# Forecast using exponential trend
+autoplot(eggs_exp)
+```
+
+```{r}
+# Forecast using exponential trend and damped
+autoplot(eggs_exp_d)
+```
+
+
+```{r eggs-rmse}
+
+rmse_eggdf <- data.frame(
+  Method = c("Holt's", "Damped Holt's","BoxCox", "Damped BoxCox", "Exponential", "Damped Exponential"),
+  RMSE = c(accuracy(eggs_holt)[2],
+           accuracy(eggs_damped)[2],
+           accuracy(eggs_boxcox)[2],
+           accuracy(eggs_boxcox_d)[2], 
+           accuracy(eggs_exp)[2],
+           accuracy(eggs_exp_d)[2])
+)
+
+rmse_eggdf
+```
+
+Analyzing all the RMSEs above for all the methods, it appears BoxCox transformation is the lowest (=26.39376). From all the 6 graphs above it is clear too that BoxCox transformation forecast captures the decline trend and good enough among all. 
 
 
 # Exercise 7.8 
 Recall your retail time series data (from Exercise 3 in Section 2.10).
 
+```{r retail}
+retaildata <- readxl::read_excel("retail.xlsx", skip=1)
+myts <- ts(retaildata[,"A3349627V"], frequency=12, start=c(1982,4))
+
+```
+
+
 
 ## a)
 Why is multiplicative seasonality necessary for this series?
 
+```{r ap-retail}
+autoplot(myts) + 
+  labs(title="Retail Sales")
+```
+
+The multiplicative method is preferred when the seasonal variations are changing proportional to the level of the series. It appears in above graph that the variability in the series is increasing over years therefore multiplicative seasonality is necessary for the series.
 
 ## b)
 Apply Holt-Winters’ multiplicative method to the data. Experiment with making the trend damped.
 
 
+```{r hw}
+# multiplicative
+myts_hw <- hw(myts, seasonal = "multiplicative")
+summary(myts_hw)
+```
+
+```{r hw-d}
+# multiplicative damped
+myts_hwd <- hw(myts, seasonal = "multiplicative", damped = T)
+summary(myts_hwd)
+```
+
+
+```{r ap-mul-d}
+autoplot(myts) + 
+  autolayer(myts_hw, PI=F, series='Multiplicative') +
+  autolayer(myts_hwd, PI=F, series='Multiplicative with damped trend') + 
+  theme(legend.position = "top") + 
+  ylab("Retail Sales")
+```
+
+Seeing the forecast, it appears multiplicative damped forecast the trend increases slowly as compared to only multiplicative one.
+
 ## c)
 Compare the RMSE of the one-step forecasts from the two methods. Which do you prefer?
 
+```{r}
+rmse_retdf <- data.frame(
+  Method = c("Mulitplicative", "Damped Mulitplicative"),
+  RMSE = c(accuracy(myts_hw)[2],
+           accuracy(myts_hwd)[2])
+)
+
+rmse_retdf
+```
+Comparing RMSEs for both these methods, it is apparent that multiplicative with damped method is better than multiplicative only.
 
 ## d)
 Check that the residuals from the best method look like white noise.
 
+```{r res}
+checkresiduals(myts_hw)
+```
+
+For white noise series, we expect each autocorrelation to be close to zero. If one or more large spikes are outside these bounds, or if substantially more than 5% of spikes are outside these bounds, then the series is probably not white noise. Ljung-Box test result and ACF plot show that the residuals aren’t white noise.
+
 
 ## e)
 Now find the test set RMSE while training the model to the end of 2010. Can you beat the seasonal naive approach from Exercise 8 in Section 3.7?
+
+```{r testset}
+myts_train <- window(myts, end=c(2010, 12))
+myts_test <- window(myts, start = 2011)
+
+myts_train_hw <- hw(myts_train, h=36, seasonal = "multiplicative")
+myts_train_hwd <- hw(myts_train, h=36, seasonal = "multiplicative", damped = T)
+myts_train_sn <- snaive(myts_train, h=36)
+
+ap <- autoplot(myts_train) + 
+  autolayer(myts_train_hw, PI=F, series='Multiplicative') +
+  autolayer(myts_train_hwd, PI=F, series='Multiplicative with damped trend') + 
+  autolayer(myts_train_sn, PI=F, series='Seasonal Naive') + 
+  autolayer(myts_test, PI=F, series='Test set') + 
+  theme(legend.position = "top") + 
+  ylab("Retail Sales")
+
+ap
+```
+
+
+```{r zoom}
+ap + labs(title = "Zoom in - 2011 to 2014") + xlim(c(2011,2014))
+```
+
+
+
+```{r}
+# RMSE- Holt-Winters’ multiplicative method 
+accuracy(myts_train_hw, myts_test)[,2]
+```
+
+```{r}
+# RMSE- Holt-Winters’ multiplicative method with damped trend
+accuracy(myts_train_hwd, myts_test)[,2]
+```
+
+```{r}
+# RMSE- Seasonal Naive
+accuracy(myts_train_sn, myts_test)[,2]
+```
+
+
+Seeing the RMSEs for training and test sets, it seems Holt-Winters’ multiplicative method with damping does fit the timeseries best among all. Therfore Holt-Winters’ seems far more better than Seasonal Naive.
+
 
 
 
