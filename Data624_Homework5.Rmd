@@ -1,16 +1,16 @@
 ---
-title: "Data624 - Homework4"
+title: "Data624 - Homework5"
 author: "Amit Kapoor"
-date: "2/28/2021"
+date: "3/7/2021"
 output:
-  pdf_document:
-    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
+  pdf_document:
+    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -417,10 +417,10 @@ myts_train_hwd <- hw(myts_train, h=36, seasonal = "multiplicative", damped = T)
 myts_train_sn <- snaive(myts_train, h=36)
 
 ap <- autoplot(myts_train) + 
-  autolayer(myts_train_hw, PI=F, series='Multiplicative') +
-  autolayer(myts_train_hwd, PI=F, series='Multiplicative with damped trend') + 
-  autolayer(myts_train_sn, PI=F, series='Seasonal Naive') + 
-  autolayer(myts_test, PI=F, series='Test set') + 
+  autolayer(myts_train_hw,PI=FALSE, series='Multiplicative') +
+  autolayer(myts_train_hwd, PI=FALSE, series='Multiplicative with damped trend') + 
+  autolayer(myts_train_sn, PI=FALSE, series='Seasonal Naive') + 
+  autolayer(myts_test, PI=FALSE, series='Test set') + 
   theme(legend.position = "top") + 
   ylab("Retail Sales")
 
@@ -428,23 +428,23 @@ ap
 ```
 
 
-```{r zoom}
+```{r zoom, warning=FALSE}
 ap + labs(title = "Zoom in - 2011 to 2014") + xlim(c(2011,2014))
 ```
 
 
 
-```{r}
+```{r a1}
 # RMSE- Holt-Winters’ multiplicative method 
 accuracy(myts_train_hw, myts_test)[,2]
 ```
 
-```{r}
+```{r a2}
 # RMSE- Holt-Winters’ multiplicative method with damped trend
 accuracy(myts_train_hwd, myts_test)[,2]
 ```
 
-```{r}
+```{r a3}
 # RMSE- Seasonal Naive
 accuracy(myts_train_sn, myts_test)[,2]
 ```
@@ -458,14 +458,54 @@ Seeing the RMSEs for training and test sets, it seems Holt-Winters’ multiplica
 # Exercise 7.9
 For the same retail data, try an STL decomposition applied to the Box-Cox transformed series, followed by ETS on the seasonally adjusted data. How does that compare with your best previous forecasts on the test set?
 
+stlf() function is used to build the model that accepts time series, apply box cox transformation with ETS model.
+
+```{r sts-etl}
+# STL and ETS
+# ets to use for forecasting the seasonally adjusted series
+# ZZN - N=none, A=additive, M=multiplicative and Z=automatically
+# lambda=auto - Box-Cox transformation parameter
+myts_t_stlets <- stlf(myts_train, 
+                      h=36, 
+                      method="ets", 
+                      etsmodel="ZZN", 
+                      lambda = "auto", 
+                      allow.multiplicative.trend = TRUE)
+
+ap_stl <- autoplot(myts_train) + 
+  autolayer(myts_t_stlets, PI=FALSE, series='STS and ETL') +
+  autolayer(myts_train_hw, PI=FALSE, series='Multiplicative') + 
+  autolayer(myts_train_hwd, PI=FALSE, series='Multiplicative with damped trend') + 
+  autolayer(myts_test, PI=FALSE, series='Test set') + 
+  theme(legend.position = "top") + 
+  ylab("Retail Sales")
+
+ap_stl
+```
+
+```{r zoom2, warning=FALSE}
+# zoom in
+ap_stl + labs(title = "Zoom in - 2011 to 2014") + xlim(c(2011,2014))
+```
 
 
+```{r a4}
+# RMSE- stl ets
+accuracy(myts_t_stlets, myts_test)[,2]
+```
+
+```{r a5}
+# RMSE- Holt-Winters’ multiplicative method with damped trend
+accuracy(myts_train_hwd, myts_test)[,2]
+```
+
+```{r a6}
+# RMSE- Holt-Winters’ multiplicative method
+accuracy(myts_train_hw, myts_test)[,2]
+```
 
 
-
-
-
-
+From the results, it is clear it seems Holt-Winters’ multiplicative method with damping still fits the timeseries better than STL decomposition applied to the Box-Cox transformed series, followed by ETS on the seasonally adjusted data. RMSE difference shows the same results.
 
 
 
