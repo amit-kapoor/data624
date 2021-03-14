@@ -3,14 +3,14 @@ title: "Data624 - Homework4"
 author: "Amit Kapoor"
 date: "2/28/2021"
 output:
-  pdf_document:
-    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
+  pdf_document:
+    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -102,13 +102,14 @@ The series has an upward trend but don't see any seasonality or cyclicity in the
 Use the `ses()` function to forecast each series, and plot the forecasts.
 
 ```{r ses-books}
-# Using ses for pigs
+# Using ses for books
 pb_ses <- ses(books[, 'Paperback'], h=4)
 hc_ses <- ses(books[, 'Hardcover'], h=4)
 
 autoplot(books) +
   autolayer(pb_ses, series="Paperback", PI=FALSE) +
-  autolayer(hc_ses, series="Hardcover", PI=FALSE)
+  autolayer(hc_ses, series="Hardcover", PI=FALSE) + 
+  labs(title = "Daily Sales of Paperback and Hardcover Books (ses)")
 ```
 
 The simple exponential smoothing plot above shows flat forecast and doesnt appear to capture upward trend.
@@ -127,6 +128,9 @@ round(accuracy(pb_ses)[2], 2)
 round(accuracy(hc_ses)[2], 2)
 ```
 
+RMSE of hardcover for the training data is slightly better than of paperback.
+
+
 # Exercise 7.6
 We will continue with the daily sales of paperback and hardcover books in data set books.
 
@@ -134,18 +138,102 @@ We will continue with the daily sales of paperback and hardcover books in data s
 Apply Holt’s linear method to the `paperback` and `hardback` series and compute four-day forecasts in each case.
 
 
+```{r holt}
+pb_holt <- holt(books[, 'Paperback'], h=4)
+hc_holt <- holt(books[, 'Hardcover'], h=4)
+
+autoplot(books) +
+  autolayer(pb_holt, series="Paperback", PI=FALSE) +
+  autolayer(hc_holt, series="Hardcover", PI=FALSE) + 
+  labs(title = "Daily Sales of Paperback and Hardcover Books (holt)")
+```
+
+Holt's linear forecast seems better as it is able to capture the upward trend of time series.
+
 ## b)
 Compare the RMSE measures of Holt’s method for the two series to those of simple exponential smoothing in the previous question. (Remember that Holt’s method is using one more parameter than SES.) Discuss the merits of the two forecasting methods for these data sets.
+
+
+```{r rmse1-h}
+# RMSE for paperback - holt
+round(accuracy(pb_holt)[2], 2)
+```
+
+
+```{r rmse2-h}
+# RMSE for hardcover - holt
+round(accuracy(hc_holt)[2], 2)
+```
+
+The RMSEs for paperback and hardcover books sale are improved using holt's linear method as compared from simple exponential smoothing method. It happens since holt extended simple exponential smoothing to allow the forecasting of data with a trend and we see in above plot of holts, capturing upward trend.
 
 
 ## c)
 Compare the forecasts for the two series using both methods. Which do you think is best?
 
 
+```{r}
+# ses and holt comparison for paperback
+s1 <- autoplot(pb_ses) + 
+  ylab("paperback book sales") + 
+  labs(title = "ses forecast - paperback")
+h1 <- autoplot(pb_holt) + 
+  ylab("paperback book sales") + 
+  labs(title = "holt forecast - paperback")
+
+# ses and holt comparison for hardcover
+s2 <- autoplot(hc_ses) + 
+  ylab("hardcover book sales") + 
+  labs(title = "ses forecast - hardcover")
+h2 <- autoplot(hc_holt) + 
+  ylab("hardcover book sales") + 
+  labs(title = "holt forecast - hardcover")
+
+gridExtra::grid.arrange(s1, h2, s1,h2, nrow=2, ncol=2)
+```
+
+Compare the forecasts for the two series using the two, Holt's method is better than simple exponential smoothing method sith holt extended simple exponential smoothing to allow the forecasting of data with a trend. The RMSE is smaller for holt method.
+
+
+
 ## d)
 Calculate a 95% prediction interval for the first forecast for each series, using the RMSE values and assuming normal errors. Compare your intervals with those produced using `ses` and `holt`.
 
+```{r}
+# 95% prediction interval for the first forecast
+df <- data.frame(
+  Pred_Int = c("Paperback-SES", "Paperback-Holt","Hardcover-SES", "Hardcover-Holt"),
+  lower = c(pb_ses$mean[1] - 1.96*accuracy(pb_ses)[2],
+            pb_holt$mean[1] - 1.96*accuracy(pb_holt)[2],
+            hc_ses$mean[1] - 1.96*accuracy(hc_ses)[2],
+            hc_holt$mean[1] - 1.96*accuracy(hc_holt)[2]), 
+  upper = c(pb_ses$mean[1] + 1.96*accuracy(pb_ses)[2],
+            pb_holt$mean[1] + 1.96*accuracy(pb_holt)[2],
+            hc_ses$mean[1] + 1.96*accuracy(hc_ses)[2],
+            hc_holt$mean[1] + 1.96*accuracy(hc_holt)[2])
+)
 
+df
+```
+
+
+```{r}
+df2 <- data.frame(
+  Pred_Int = c("Paperback-SES", "Paperback-Holt","Hardcover-SES", "Hardcover-Holt"),
+  lower = c(pb_ses$lower[1, "95%"],
+            pb_holt$lower[1, "95%"],
+            hc_ses$lower[1, "95%"],
+            hc_holt$lower[1, "95%"]), 
+  upper = c(pb_ses$upper[1, "95%"],
+            pb_holt$upper[1, "95%"],
+            hc_ses$upper[1, "95%"],
+            hc_holt$upper[1, "95%"])
+)
+
+df2
+```
+
+From the interval range above, it is apparent that the interval calculated using RMSE is slightly narrower than from R using holt ans ses methods.
 
 # Exercise 7.7
 For this exercise use data set `eggs`, the price of a dozen eggs in the United States from 1900–1993. Experiment with the various options in the `holt()` function to see how much the forecasts change with the damped trend, or with a Box-Cox transformation. Try to develop an intuition of what each argument is doing to the forecasts.
