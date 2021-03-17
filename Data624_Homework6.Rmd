@@ -1,1 +1,147 @@
+---
+title: "Data624 - Homework6"
+author: "Amit Kapoor"
+date: "3/16/2021"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    highlight: pygments
+    number_sections: no
+    theme: flatly
+    toc: yes
+    toc_float: yes
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Exercise 8.1
+Figure 8.31 shows the ACFs for 36 random numbers, 360 random numbers, and 1,000 random numbers.
+
+## a
+Explain the differences among these figures. Do they all indicate that the data are white noise?
+
+<center>
+![Picture 1](./HW6_1.png)
+</center>
+
+
+
+
+## b
+Why are the critical values at different distances from the mean of zero? Why are the autocorrelations different in each figure when they each refer to white noise?
+
+
+# Exercise 8.2
+A classic example of a non-stationary series is the daily closing IBM stock price series (data set `ibmclose`). Use R to plot the daily closing prices for IBM stock and the ACF and PACF. Explain how each plot shows that the series is non-stationary and should be differenced.
+
+
+
+# Exercise 8.3
+For the following series, find an appropriate Box-Cox transformation and order of differencing in order to obtain stationary data.
+
+## a
+`usnetelec`
+
+
+## b
+`usgdp`
+
+## c
+`mcopper`
+
+## d
+`enplanements`
+
+## e
+`visitors`
+
+
+# Exercise 8.5
+For your retail data (from Exercise 3 in Section 2.10), find the appropriate order of differencing (after transformation if necessary) to obtain stationary data.
+
+
+# Exercise 8.6
+Use R to simulate and plot some data from simple ARIMA models.
+
+## a
+Use the following R code to generate data from an AR(1) model with $\phi_1 = 0.6$ and $\sigma^2 = 1$. The process starts with $y_1 = 0$.
+
+## b
+Produce a time plot for the series. How does the plot change as you change $\phi_1$?
+
+## c
+Write your own code to generate data from an MA(1) model with $\theta_1 = 0.6$ and $\sigma^2=1$.
+
+
+## d
+Produce a time plot for the series. How does the plot change as you change $\theta_1$?
+
+
+
+## e
+Generate data from an ARMA(1,1) model with $\phi_1=0.6$, $\theta_1=0.6$ and $\sigma^2=1$.
+
+
+
+## f
+Generate data from an AR(2) model with $\phi_1=-0.8$, $\phi_2=0.3$ and $\sigma^2=1$. (Note that these parameters will give a non-stationary series.)
+
+
+## g
+Graph the latter two series and compare them.
+
+
+
+# Exercise 8.7
+Consider `wmurders`, the number of women murdered each year (per 100,000 standard population) in the United States.
+
+## a
+By studying appropriate graphs of the series in R, find an appropriate ARIMA(p,d,q) model for these data.
+
+
+## b
+Should you include a constant in the model? Explain.
+
+## d 
+Fit the model using R and examine the residuals. Is the model satisfactory?
+
+
+## e
+Forecast three times ahead. Check your forecasts by hand to make sure that you know how they have been calculated.
+
+
+## f
+Create a plot of the series with forecasts and prediction intervals for the next three periods shown.
+
+
+## g
+Does `auto.arima()` give the same model you have chosen? If not, which model do you think is better?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
