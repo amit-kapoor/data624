@@ -3,14 +3,14 @@ title: "Data624 - Homework6"
 author: "Amit Kapoor"
 date: "3/16/2021"
 output:
+  pdf_document:
+    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
-  pdf_document:
-    toc: yes
 ---
 
 
@@ -28,7 +28,7 @@ Explain the differences among these figures. Do they all indicate that the data 
 ![Picture 1](https://raw.githubusercontent.com/amit-kapoor/data624/master/HW6_1.png)
 </center>
 
-
+As sample size increases (from 36 random number to 360 random numbers and then 1,000 random numbers), the correlation tends to 0.The ACF bands keeps on getting narrower and random numbers size increases. If the number of spikes are more than 5% that are outside the bounds than series is not white noise. In each of these ACF plots, that is not the case as all the bars are close to 0 so all are of white noise.
 
 
 ## b
