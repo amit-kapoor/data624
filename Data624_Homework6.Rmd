@@ -3,14 +3,14 @@ title: "Data624 - Homework6"
 author: "Amit Kapoor"
 date: "3/16/2021"
 output:
-  pdf_document:
-    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
+  pdf_document:
+    toc: yes
 ---
 
 
@@ -34,6 +34,8 @@ As sample size increases (from 36 random number to 360 random numbers and then 1
 ## b
 Why are the critical values at different distances from the mean of zero? Why are the autocorrelations different in each figure when they each refer to white noise?
 
+
+The critical values are at different distances from the mean of zero since critical values for white noise are supposed to lie within $\pm \frac{1.96}{\sqrt{T}}$ where T is length of time series. In this case, as T gets bigger, range gets smaller. 
 
 # Exercise 8.2
 A classic example of a non-stationary series is the daily closing IBM stock price series (data set `ibmclose`). Use R to plot the daily closing prices for IBM stock and the ACF and PACF. Explain how each plot shows that the series is non-stationary and should be differenced.
