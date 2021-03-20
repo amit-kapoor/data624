@@ -18,11 +18,20 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+
+```{r loadData, include=FALSE}
+# Libraries
+library(fpp2)
+library(tidyverse)
+```
+
+
+
 # Exercise 8.1
-Figure 8.31 shows the ACFs for 36 random numbers, 360 random numbers, and 1,000 random numbers.
+**Figure 8.31 shows the ACFs for 36 random numbers, 360 random numbers, and 1,000 random numbers.**
 
 ## a
-Explain the differences among these figures. Do they all indicate that the data are white noise?
+**Explain the differences among these figures. Do they all indicate that the data are white noise?**
 
 <center>
 ![Picture 1](https://raw.githubusercontent.com/amit-kapoor/data624/master/HW6_1.png)
@@ -32,14 +41,24 @@ As sample size increases (from 36 random number to 360 random numbers and then 1
 
 
 ## b
-Why are the critical values at different distances from the mean of zero? Why are the autocorrelations different in each figure when they each refer to white noise?
+**Why are the critical values at different distances from the mean of zero? Why are the autocorrelations different in each figure when they each refer to white noise?**
 
 
-The critical values are at different distances from the mean of zero since critical values for white noise are supposed to lie within $\pm \frac{1.96}{\sqrt{T}}$ where T is length of time series. In this case, as T gets bigger, range gets smaller. 
+The critical values are at different distances from the mean of zero since critical values for white noise are supposed to lie within $\pm \frac{1.96}{\sqrt{T}}$ where T is length of time series. In this case, as T gets bigger, range gets smaller. Hence the autocorrelations different in each figure.
 
 # Exercise 8.2
-A classic example of a non-stationary series is the daily closing IBM stock price series (data set `ibmclose`). Use R to plot the daily closing prices for IBM stock and the ACF and PACF. Explain how each plot shows that the series is non-stationary and should be differenced.
+**A classic example of a non-stationary series is the daily closing IBM stock price series (data set `ibmclose`). Use R to plot the daily closing prices for IBM stock and the ACF and PACF. Explain how each plot shows that the series is non-stationary and should be differenced.**
 
+```{r ibc-data}
+head(ibmclose)
+```
+
+
+```{r ibc-plot}
+ggtsdisplay(ibmclose, main="Daily closing IBM stock price", ylab="Stock Price", xlab="Days")
+```
+
+This time series does show the trend e.g. from 210 to 270 it shows the downward trend. the ACF plot is useful for identifying non-stationary time series. For a non stationary time series, the ACF plot decreases slowly. Here the ACF plot does show a slow decrease as the lag increases.The PACF plot is a plot of the partial correlation coefficients between the series and lags of itself. Here PACF plot shows the first lag is close to 1 and all the other PACF is close to 0. Thus we can conclude it is a non-stationary time series and should be differenced to make it stationary.
 
 
 # Exercise 8.3
