@@ -67,18 +67,44 @@ For the following series, find an appropriate Box-Cox transformation and order o
 ## a
 `usnetelec`
 
+```{r}
+ggtsdisplay(usnetelec)
+```
+
 
 ## b
 `usgdp`
 
+```{r}
+ggtsdisplay(usgdp)
+```
+
+
+
+
 ## c
 `mcopper`
+
+```{r}
+ggtsdisplay(mcopper)
+```
+
 
 ## d
 `enplanements`
 
+```{r}
+ggtsdisplay(enplanements)
+```
+
+
 ## e
 `visitors`
+
+
+```{r}
+ggtsdisplay(visitors)
+```
 
 
 # Exercise 8.5
