@@ -23,6 +23,7 @@ knitr::opts_chunk$set(echo = TRUE)
 # Libraries
 library(fpp2)
 library(tidyverse)
+library(urca)
 ```
 
 
@@ -67,9 +68,64 @@ For the following series, find an appropriate Box-Cox transformation and order o
 ## a
 `usnetelec`
 
-```{r}
-ggtsdisplay(usnetelec)
+```{r usnetelec}
+#Annual US net electricity generation (billion kwh) for 1949-2003
+head(usnetelec)
 ```
+
+
+```{r disp1}
+ggtsdisplay(usnetelec, 
+            main="Annual US net electricity generation", 
+            ylab="billion kwh", 
+            xlab="year")
+```
+
+The graph and ACF plot show an upward trend for this time series. PACF shows all the lags close to 0 except the 1st one which is close to 1. It confirms this a non stationary time series.
+
+Now lets do the BoxCox transformation and see the results.
+
+```{r disp1-boxcox}
+bc_trans <- BoxCox(usnetelec, BoxCox.lambda(usnetelec))
+ggtsdisplay(bc_trans, 
+            main="Annual US net electricity generation - BoxCox", 
+            ylab="billion kwh", 
+            xlab="year")
+```
+
+After BoxCox transformation of given time series, we dont see noticeable change here which could be due to non seasonalilty in time series. Next is to use kpss test in which the null hypothesis is that the data are stationary, and we look for evidence that the null hypothesis is false. Consequently, small p-values (e.g., less than 0.05) suggest that differencing is required. 
+
+
+```{r bct1-kpss}
+bc_trans %>% ur.kpss() %>% summary()
+```
+
+The test statistic is much bigger than the 1% critical value, indicating that the null hypothesis is rejected and the boxcox transformed data is not stationary. We will now use ndiffs() function to determine the order of differencing.
+
+```{r}
+ndiffs(bc_trans)
+```
+
+It shows number of differences required is 2 for boxcox transformed data. Lets first apply the differences as 1 and see the results.
+
+
+```{r}
+bct.diff <- bc_trans %>% diff()
+bct.diff %>% ur.kpss() %>% summary()
+```
+
+
+We can see the diff of order 1 makes the test statistic small and well within the range we would expect for stationary data. So we can conclude that the differenced data are stationary.
+
+
+```{r}
+ggtsdisplay(bct.diff, 
+            main="Annual US net electricity generation", 
+            ylab="billion kwh", 
+            xlab="year")
+```
+
+
 
 
 ## b
@@ -78,6 +134,8 @@ ggtsdisplay(usnetelec)
 ```{r}
 ggtsdisplay(usgdp)
 ```
+
+
 
 
 
