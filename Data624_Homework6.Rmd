@@ -372,6 +372,63 @@ ggtsdisplay(visi.bct.diff,
 # Exercise 8.5
 For your retail data (from Exercise 3 in Section 2.10), find the appropriate order of differencing (after transformation if necessary) to obtain stationary data.
 
+```{r}
+retaildata <- readxl::read_excel("retail.xlsx", skip=1)
+myts <- ts(retaildata[,"A3349627V"], frequency=12, start=c(1982,4))
+
+ggtsdisplay(myts, 
+            main="Retail Sales",
+            ylab="Sales", 
+            xlab="Year")
+```
+
+There is a clear annual seasonality increase in retail sales from October to December. I see a consistent upward trend and dont see cyclicity. Now lets do the BoxCox transformation and see the results.
+
+```{r}
+sale.bc_trans <- BoxCox(myts, BoxCox.lambda(myts))
+ggtsdisplay(visi.bc_trans, 
+            main=paste("Retail Sales - BoxCox lambda=", round(BoxCox.lambda(myts), 3)), 
+            ylab="Sales", 
+            xlab="Year")
+```
+
+t is evident here that Box-Cox transformation, with lambda -0.058 does help for seasonal variation. Next is to use kpss test in which the null hypothesis is that the data are stationary.
+
+
+
+```{r}
+sale.bc_trans %>% ur.kpss() %>% summary()
+```
+
+
+The test statistic is much bigger than the 1% critical value, indicating that the null hypothesis is rejected and the boxcox transformed data is not stationary. We will now use ndiffs() function to determine the order of differencing.
+
+
+```{r}
+ndiffs(sale.bc_trans)
+```
+
+
+It shows number of differences required is 1 for boxcox transformed data.
+
+
+```{r}
+sale.bct.diff <- sale.bc_trans %>% diff()
+sale.bct.diff %>% ur.kpss() %>% summary()
+```
+
+
+We can see the diff of order 1 makes the test statistic small and well within the range we would expect for stationary data. So we can conclude that the differenced data are stationary.
+
+
+```{r}
+ggtsdisplay(sale.bct.diff, 
+            main="Retail Sales - BoxCox Diff", 
+            ylab="Sales", 
+            xlab="Year")
+```
+
+
 
 # Exercise 8.6
 Use R to simulate and plot some data from simple ARIMA models.
