@@ -88,7 +88,7 @@ Now lets do the BoxCox transformation and see the results.
 ```{r disp1-boxcox}
 bc_trans <- BoxCox(usnetelec, BoxCox.lambda(usnetelec))
 ggtsdisplay(bc_trans, 
-            main="Annual US net electricity generation - BoxCox", 
+            main=paste("Annual US net electricity generation - BoxCox lambda=", round(BoxCox.lambda(usnetelec), 3)), 
             ylab="billion kwh", 
             xlab="year")
 ```
@@ -120,7 +120,7 @@ We can see the diff of order 1 makes the test statistic small and well within th
 
 ```{r}
 ggtsdisplay(bct.diff, 
-            main="Annual US net electricity generation", 
+            main="Annual US net electricity generation - BoxCox Diff", 
             ylab="billion kwh", 
             xlab="year")
 ```
@@ -131,21 +131,124 @@ ggtsdisplay(bct.diff,
 ## b
 `usgdp`
 
+```{r usgdp}
+# Quarterly US GDP. 1947:1 - 2006.1.
+head(usgdp)
+```
+
+
 ```{r}
-ggtsdisplay(usgdp)
+ggtsdisplay(usgdp, main="Quarterly US GDP",xlab="Year",ylab="US Dollars")
+```
+
+The graph and ACF plot show an upward trend for this time series. PACF shows all the lags close to 0 except the 1st one which is close to 1. It confirms this a non stationary time series.
+
+Now lets do the BoxCox transformation and see the results.
+
+
+```{r}
+usgdp.bc_trans <- BoxCox(usgdp, BoxCox.lambda(usgdp))
+ggtsdisplay(usgdp.bc_trans, 
+            main=paste("Quarterly US GDP - BoxCox lambda=", round(BoxCox.lambda(usgdp), 3)), 
+            xlab="Year",
+            ylab="US Dollars")
 ```
 
 
 
+It is evident here that Box-Cox transformation, with lambda 0.366, has removed the curvature in the original data. Next is to use kpss test in which the null hypothesis is that the data are stationary,
 
+
+```{r}
+usgdp.bc_trans %>% ur.kpss() %>% summary()
+```
+
+
+The test statistic is much bigger than the 1% critical value, indicating that the null hypothesis is rejected and the boxcox transformed data is not stationary. We will now use ndiffs() function to determine the order of differencing.
+
+
+```{r}
+ndiffs(usgdp.bc_trans)
+```
+
+
+It shows number of differences required is 1 for boxcox transformed data. 
+
+
+```{r}
+usgdp.bct.diff <- usgdp.bc_trans %>% diff()
+usgdp.bct.diff %>% ur.kpss() %>% summary()
+```
+
+
+We can see the diff of order 1 makes the test statistic small and well within the range we would expect for stationary data. So we can conclude that the differenced data are stationary.
+
+
+```{r}
+ggtsdisplay(usgdp.bct.diff, 
+            main="Quarterly US GDP - BoxCox Diff", 
+            xlab="Year",
+            ylab="US Dollars")
+```
 
 
 ## c
 `mcopper`
 
 ```{r}
-ggtsdisplay(mcopper)
+head(mcopper)
 ```
+
+
+```{r}
+# Monthly copper prices
+ggtsdisplay(mcopper, main="Monthly copper prices", ylab="pounds per ton", xlab="Year")
+```
+
+The time series shows a slight seasonality and periods of both downward and upward trend. We can also see a sudden spike in 2000s. These facts confirm that it is a non-stationary time series. Now lets do the BoxCox transformation and see the results.
+
+
+
+```{r}
+mcop.bc_trans <- BoxCox(mcopper, BoxCox.lambda(mcopper))
+ggtsdisplay(mcop.bc_trans, 
+            main=paste("Monthly copper prices - BoxCox lambda=", round(BoxCox.lambda(mcopper), 3)), 
+            ylab="pounds per ton", 
+            xlab="Year")
+```
+
+It is evident here that Box-Cox transformation, with lambda 0.192, shows the seasonality. Next is to use kpss test in which the null hypothesis is that the data are stationary.
+
+```{r}
+mcop.bc_trans %>% ur.kpss() %>% summary()
+```
+
+
+The test statistic is much bigger than the 1% critical value, indicating that the null hypothesis is rejected and the boxcox transformed data is not stationary. We will now use ndiffs() function to determine the order of differencing.
+
+
+```{r}
+ndiffs(mcop.bc_trans)
+```
+
+It shows number of differences required is 1 for boxcox transformed data.
+
+
+```{r}
+mcop.bct.diff <- mcop.bc_trans %>% diff()
+mcop.bct.diff %>% ur.kpss() %>% summary()
+```
+
+We can see the diff of order 1 makes the test statistic small and well within the range we would expect for stationary data. So we can conclude that the differenced data are stationary.
+
+```{r}
+ggtsdisplay(mcop.bct.diff, 
+            main="Monthly copper prices - BoxCox Diff", 
+            ylab="pounds per ton", 
+            xlab="Year")
+```
+
+
 
 
 ## d
