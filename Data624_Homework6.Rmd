@@ -3,14 +3,14 @@ title: "Data624 - Homework6"
 author: "Amit Kapoor"
 date: "3/16/2021"
 output:
+  pdf_document:
+    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
-  pdf_document:
-    toc: yes
 ---
 
 
@@ -35,7 +35,7 @@ library(urca)
 **Explain the differences among these figures. Do they all indicate that the data are white noise?**
 
 <center>
-![Picture 1](https://raw.githubusercontent.com/amit-kapoor/data624/master/HW6_1.png)
+![Picture 1](./HW6_1.png)
 </center>
 
 As sample size increases (from 36 random number to 360 random numbers and then 1,000 random numbers), the correlation tends to 0.The ACF bands keeps on getting narrower and random numbers size increases. If the number of spikes are more than 5% that are outside the bounds than series is not white noise. In each of these ACF plots, that is not the case as all the bars are close to 0 so all are of white noise.
@@ -255,16 +255,117 @@ ggtsdisplay(mcop.bct.diff,
 `enplanements`
 
 ```{r}
-ggtsdisplay(enplanements)
+# Monthly US domestic enplanements
+head(enplanements)
 ```
+
+
+```{r}
+ggtsdisplay(enplanements, main="US Domestic Revenue Enplanements", ylab="millions", xlab="Year")
+```
+
+This time series has upward trend and seasonality. Also we see a sudden drop in year 2002. Thus this series is non stationary. Now lets do the BoxCox transformation and see the results.
+
+
+```{r}
+enpl.bc_trans <- BoxCox(enplanements, BoxCox.lambda(enplanements))
+ggtsdisplay(enpl.bc_trans, 
+            main=paste("US Domestic Revenue Enplanements - BoxCox lambda=", round(BoxCox.lambda(enplanements), 3)), 
+            ylab="millions", 
+            xlab="Year")
+```
+
+It is evident here that Box-Cox transformation, with lambda -0.227, shows the seasonality. Next is to use kpss test in which the null hypothesis is that the data are stationary.
+
+
+```{r}
+enpl.bc_trans %>% ur.kpss() %>% summary()
+```
+
+The test statistic is much bigger than the 1% critical value, indicating that the null hypothesis is rejected and the boxcox transformed data is not stationary. We will now use ndiffs() function to determine the order of differencing.
+
+
+```{r}
+ndiffs(enpl.bc_trans)
+```
+
+It shows number of differences required is 1 for boxcox transformed data.
+
+```{r}
+enpl.bct.diff <- enpl.bc_trans %>% diff()
+enpl.bct.diff %>% ur.kpss() %>% summary()
+```
+
+
+We can see the diff of order 1 makes the test statistic small and well within the range we would expect for stationary data. So we can conclude that the differenced data are stationary.
+
+
+```{r}
+ggtsdisplay(enpl.bct.diff, 
+            main="US Domestic Revenue Enplanements - BoxCox Diff", 
+            ylab="millions", 
+            xlab="Year")
+```
+
+
 
 
 ## e
 `visitors`
 
+```{r}
+# Monthly Australian short-term overseas vistors. May 1985-April 2005
+head(visitors)
+```
+
 
 ```{r}
-ggtsdisplay(visitors)
+ggtsdisplay(visitors, 
+            main="Overseas visitors to Australia", 
+            ylab="Thousands of people", 
+            xlab="Year")
+```
+
+This time series has upward trend and seasonality. So this series is non stationary. Now lets do the BoxCox transformation and see the results.
+
+
+```{r}
+visi.bc_trans <- BoxCox(visitors, BoxCox.lambda(visitors))
+ggtsdisplay(visi.bc_trans, 
+            main=paste("Overseas visitors to Australia - BoxCox lambda=", round(BoxCox.lambda(visitors), 3)), 
+            ylab="Thousands of people", 
+            xlab="Year")
+```
+
+It is evident here that Box-Cox transformation, with lambda 0.278  does help for variation. Next is to use kpss test in which the null hypothesis is that the data are stationary.
+
+```{r}
+visi.bc_trans %>% ur.kpss() %>% summary()
+```
+
+The test statistic is much bigger than the 1% critical value, indicating that the null hypothesis is rejected and the boxcox transformed data is not stationary. We will now use ndiffs() function to determine the order of differencing.
+
+```{r}
+ndiffs(visi.bc_trans)
+```
+
+
+It shows number of differences required is 1 for boxcox transformed data.
+
+```{r}
+visi.bct.diff <- visi.bc_trans %>% diff()
+visi.bct.diff %>% ur.kpss() %>% summary()
+```
+
+
+We can see the diff of order 1 makes the test statistic small and well within the range we would expect for stationary data. So we can conclude that the differenced data are stationary.
+
+
+```{r}
+ggtsdisplay(visi.bct.diff, 
+            main="Overseas visitors to Australia - BoxCox Diff", 
+            ylab="Thousands of people", 
+            xlab="Year")
 ```
 
 
