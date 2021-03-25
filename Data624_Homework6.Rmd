@@ -3,14 +3,14 @@ title: "Data624 - Homework6"
 author: "Amit Kapoor"
 date: "3/16/2021"
 output:
-  pdf_document:
-    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
+  pdf_document:
+    toc: yes
 ---
 
 
@@ -35,7 +35,7 @@ library(urca)
 **Explain the differences among these figures. Do they all indicate that the data are white noise?**
 
 <center>
-![Picture 1](./HW6_1.png)
+![Picture 1](https://raw.githubusercontent.com/amit-kapoor/data624/master/HW6_1.png)
 </center>
 
 As sample size increases (from 36 random number to 360 random numbers and then 1,000 random numbers), the correlation tends to 0.The ACF bands keeps on getting narrower and random numbers size increases. If the number of spikes are more than 5% that are outside the bounds than series is not white noise. In each of these ACF plots, that is not the case as all the bars are close to 0 so all are of white noise.
@@ -63,7 +63,7 @@ This time series does show the trend e.g. from 210 to 270 it shows the downward 
 
 
 # Exercise 8.3
-For the following series, find an appropriate Box-Cox transformation and order of differencing in order to obtain stationary data.
+**For the following series, find an appropriate Box-Cox transformation and order of differencing in order to obtain stationary data.**
 
 ## a
 `usnetelec`
@@ -370,7 +370,7 @@ ggtsdisplay(visi.bct.diff,
 
 
 # Exercise 8.5
-For your retail data (from Exercise 3 in Section 2.10), find the appropriate order of differencing (after transformation if necessary) to obtain stationary data.
+**For your retail data (from Exercise 3 in Section 2.10), find the appropriate order of differencing (after transformation if necessary) to obtain stationary data.**
 
 ```{r}
 retaildata <- readxl::read_excel("retail.xlsx", skip=1)
@@ -431,61 +431,185 @@ ggtsdisplay(sale.bct.diff,
 
 
 # Exercise 8.6
-Use R to simulate and plot some data from simple ARIMA models.
+**Use R to simulate and plot some data from simple ARIMA models.**
 
 ## a
-Use the following R code to generate data from an AR(1) model with $\phi_1 = 0.6$ and $\sigma^2 = 1$. The process starts with $y_1 = 0$.
+**Use the following R code to generate data from an AR(1) model with $\phi_1 = 0.6$ and $\sigma^2 = 1$. The process starts with $y_1 = 0$.**
+
+```{r}
+y <- ts(numeric(100))
+e <- rnorm(100)
+for(i in 2:100)
+  y[i] <- 0.6*y[i-1] + e[i]
+```
+
 
 ## b
-Produce a time plot for the series. How does the plot change as you change $\phi_1$?
+**Produce a time plot for the series. How does the plot change as you change $\phi_1$?**
+
+Lets first draw the plot of original y.
+
+```{r orig}
+autoplot(y) + labs(title=paste("Original phi =", 0.6))
+```
+
+We will now create a function which will accept phi and return the series. Next step is to get the series for different values of phi and and then plot them. Here we will have phi values 0.1, 0.3, 0.5, 0.7, 0.9 to plot different series.
+
+
+```{r}
+ar1 <- function(phi) {
+  set.seed(17)
+  y <- ts(numeric(100))
+  e <- rnorm(100)
+  
+  for(i in 2:100)
+    y[i] <- phi*y[i-1] + e[i]
+  
+  return(y)
+}
+```
+
+
+```{r plot-phi}
+# initialize p
+p <- autoplot(ar1(0.6))
+# create series
+for(phi in seq(0.1,1, 0.2)) {
+  p <- p + autolayer(ar1(phi), series=paste(phi))
+}
+# plot all series
+p + 
+  theme(legend.position = "top") + 
+  labs(title = "AR1")
+```
+
+It is apparent that as the value of $\phi_1$ increases, the distance from 0 increases and that causes higher correlation.
+
 
 ## c
-Write your own code to generate data from an MA(1) model with $\theta_1 = 0.6$ and $\sigma^2=1$.
+**Write your own code to generate data from an MA(1) model with $\theta_1 = 0.6$ and $\sigma^2=1$.**
+
+```{r}
+ma1 <- function(theta, sigma, n) {
+  set.seed(17)
+  y <- ts(numeric(n))
+  e <- rnorm(n, sigma)
+  
+  for(i in 2:n)
+    y[i] <- theta*e[i-1] + e[i]
+  
+  return(y)
+}
+```
+
 
 
 ## d
-Produce a time plot for the series. How does the plot change as you change $\theta_1$?
+**Produce a time plot for the series. How does the plot change as you change $\theta_1$?**
 
+```{r plot-theta}
 
+sigma <-1
+n <- 100
+
+# initialize p
+p <- autoplot(ma1(0.6,sigma,n))
+
+# create series
+for(theta in seq(0.1,1, 0.2)) {
+  p <- p + autolayer( ma1(theta,sigma,n), series=paste(theta))
+}
+
+# plot all series
+p + 
+  theme(legend.position = "top")  + 
+  labs(title = "MA1")
+```
+
+Similar to AR(1) model, MA(1) changes as well with $\theta_1$ changes. As $\theta_1$ increases, it shows higher correlation.
 
 ## e
-Generate data from an ARMA(1,1) model with $\phi_1=0.6$, $\theta_1=0.6$ and $\sigma^2=1$.
+**Generate data from an ARMA(1,1) model with $\phi_1=0.6$, $\theta_1=0.6$ and $\sigma^2=1$.**
 
+
+```{r}
+# function to return data for ARMA
+arma <- function(phi, theta, sigma) {
+  
+  set.seed(17)
+  y <- ts(numeric(100))
+  e <- rnorm(100, sigma)
+  for(i in 2:100)
+    y[i] <- phi*y[i-1] + theta*e[i-1] + e[i]
+  
+  return(y)
+}
+
+# plot the data with phi=0.6, theta=0.6 and sigma=1
+autoplot(arma(0.6, 0.6, 1))
+
+```
 
 
 ## f
-Generate data from an AR(2) model with $\phi_1=-0.8$, $\phi_2=0.3$ and $\sigma^2=1$. (Note that these parameters will give a non-stationary series.)
+**Generate data from an AR(2) model with $\phi_1=-0.8$, $\phi_2=0.3$ and $\sigma^2=1$. (Note that these parameters will give a non-stationary series.)**
+
+
+```{r}
+# function to return data for ARMA
+ar2 <- function(phi1, phi2, sigma) {
+  
+  set.seed(17)
+  y <- ts(numeric(100))
+  e <- rnorm(100, sigma)
+  for(i in 3:100)
+    y[i] <- phi1*y[i-1] + phi2*y[i-2] + e[i]
+  
+  return(y)
+}
+
+# plot the data with phi1=-0.8, phi2=0.3 and sigma=1
+autoplot(ar2(-0.8, 0.3, 1))
+```
 
 
 ## g
-Graph the latter two series and compare them.
+**Graph the latter two series and compare them.**
 
+```{r}
+ggtsdisplay(arma(0.6, 0.6, 1))
+```
+
+
+```{r}
+ggtsdisplay(ar2(-0.8, 0.3, 1))
+```
 
 
 # Exercise 8.7
-Consider `wmurders`, the number of women murdered each year (per 100,000 standard population) in the United States.
+**Consider `wmurders`, the number of women murdered each year (per 100,000 standard population) in the United States.**
 
 ## a
-By studying appropriate graphs of the series in R, find an appropriate ARIMA(p,d,q) model for these data.
+**By studying appropriate graphs of the series in R, find an appropriate ARIMA(p,d,q) model for these data.**
 
 
 ## b
-Should you include a constant in the model? Explain.
+**Should you include a constant in the model? Explain.**
 
 ## d 
-Fit the model using R and examine the residuals. Is the model satisfactory?
+**Fit the model using R and examine the residuals. Is the model satisfactory?**
 
 
 ## e
-Forecast three times ahead. Check your forecasts by hand to make sure that you know how they have been calculated.
+**Forecast three times ahead. Check your forecasts by hand to make sure that you know how they have been calculated.**
 
 
 ## f
-Create a plot of the series with forecasts and prediction intervals for the next three periods shown.
+**Create a plot of the series with forecasts and prediction intervals for the next three periods shown.**
 
 
 ## g
-Does `auto.arima()` give the same model you have chosen? If not, which model do you think is better?
+**Does `auto.arima()` give the same model you have chosen? If not, which model do you think is better?**
 
 
 
