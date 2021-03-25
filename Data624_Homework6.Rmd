@@ -577,20 +577,47 @@ autoplot(ar2(-0.8, 0.3, 1))
 **Graph the latter two series and compare them.**
 
 ```{r}
-ggtsdisplay(arma(0.6, 0.6, 1))
+ggtsdisplay(arma(0.6, 0.6, 1), , main="ARMA(1,1)")
 ```
 
 
 ```{r}
-ggtsdisplay(ar2(-0.8, 0.3, 1))
+ggtsdisplay(ar2(-0.8, 0.3, 1), main="AR(2)")
 ```
 
+`ARMA(1,1)` seems like stationary and almost white noise. On the other hand `AR(2)` starts like a line and gradually started to grow and eventually increases exponentially over the time.
 
 # Exercise 8.7
 **Consider `wmurders`, the number of women murdered each year (per 100,000 standard population) in the United States.**
 
 ## a
 **By studying appropriate graphs of the series in R, find an appropriate ARIMA(p,d,q) model for these data.**
+
+```{r}
+# Total Murdered women, per 100 000 standard population.
+head(wmurders)
+```
+
+
+```{r}
+ggtsdisplay(wmurders, main = "Total Murdered women")
+```
+
+```{r}
+ndiffs(wmurders)
+```
+
+
+```{r}
+wmurders.diff <- wmurders %>% diff(differences=2)
+wmurders.diff %>% ur.kpss() %>% summary()
+```
+
+
+```{r}
+ggtsdisplay(wmurders.diff)
+```
+
 
 
 ## b
