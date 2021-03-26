@@ -603,10 +603,14 @@ head(wmurders)
 ggtsdisplay(wmurders, main = "Total Murdered women")
 ```
 
+The data initially shows an upward trend followed by oscillation and then declines. We dont see any seasonality variation so BoxCox transformation is not needed here. Lets find out if differencing required to make this time series stationary.
+
+
 ```{r}
 ndiffs(wmurders)
 ```
 
+Next step is to perform differencing and apply kpss unit root test.
 
 ```{r}
 wmurders.diff <- wmurders %>% diff(differences=2)
@@ -614,31 +618,110 @@ wmurders.diff %>% ur.kpss() %>% summary()
 ```
 
 
+We can see the diff of order 1 makes the test statistic small and well within the range we would expect for stationary data. So we can conclude that the differenced data are stationary.
+
+
 ```{r}
-ggtsdisplay(wmurders.diff)
+ggtsdisplay(wmurders.diff, main = "Total Murdered women - Differenced")
 ```
 
-
+ARIMA(p,d,q) model, p= order of the autoregressive part, d=degree of first differencing involved and q= order of the moving average part. The first lag of PACF shows the only spike which suggests p as 1, ndiff suggests difference is of order 2 so d will 2. ACF plot shows significant spike at 1 so q=2. Hence **ARIMA(1,2,1)** seems appropriate here. 
 
 ## b
 **Should you include a constant in the model? Explain.**
 
+As mentioned [here](https://otexts.com/fpp2/non-seasonal-arima.html), If c=0 and d=2, the long-term forecasts will follow a straight line. If c $\neq$ 0 and d = 2, the long-term forecasts will follow a quadratic trend which is not recommended. In this case d=2, so we will not include constant in the model.
+
+## c
+**Write this model in terms of the backshift operator**
+
+\[
+(1 - \phi_1 B)(1 - B)^2 y_t = (1 + \theta_1 B) \epsilon_t
+\]
+
+
 ## d 
 **Fit the model using R and examine the residuals. Is the model satisfactory?**
+
+
+```{r}
+(fit <- Arima(wmurders, order = c(1,2,1)))
+```
+
+
+
+```{r}
+checkresiduals(fit)
+```
+
+The ACF plot from ARIMA(1,2,1) shows all autocorrelations are within acceptable limit, indicating residuals are white noise. The histogram doesnt appear highly skewed as mean appears newar to 0. The p-value from Ljung-Box test indicates the residuals are white noise. Hence the model will be 
+
+
+\[
+(1 + 0.24 B)(1 - B)^2 y_t = (1 - 0.83 B) \epsilon_t
+\]
+
 
 
 ## e
 **Forecast three times ahead. Check your forecasts by hand to make sure that you know how they have been calculated.**
 
 
+```{r}
+forecast(fit, h=3)
+```
+
+By hand, the forecast three times ahead is calculated below:
+
+\begin{equation}
+\begin{aligned}
+(1 - \phi_1B)(1 - B)^2 y_t = (1 + \theta_1 B) \epsilon_t \\
+\end{aligned}
+\end{equation}
+
+After transpose and factoring, the equation could be written as:
+
+\[
+y_t = (2 + \phi_1)y_{t-1} - (1 + 2\phi_1)y_{t-2} + \phi_1y_{t-3} + \epsilon_t + \theta_1\epsilon_{t-1}
+\]
+
+
+
+Lets replace values as $\phi_1 = -0.2434$, $\theta_1 = -0.8261$ and $\epsilon_t = 0$ and do the calculations
+
+```{r}
+t <- length(wmurders)
+e <- fit$residuals
+fc_1 <- round( ( (2-0.2434)*wmurders[t] - (1-2*0.2434)*wmurders[t-1] - 0.2434*wmurders[t-2] - 0.8261*e[t] ), 3)
+fc_2 <- round( ( (2-0.2434)*fc_1 - (1-2*0.2434)*wmurders[t] - 0.2434*wmurders[t-1] - 0.8261*0 ), 3) 
+fc_3 <- round( ( (2-0.2434)*fc_2 - (1-2*0.2434)*fc_1 - 0.2434*wmurders[t] - 0.8261*0  ), 3)
+
+df <- data.frame(forecast=c(1,2,3),
+                 values=c(fc_1,fc_2,fc_3))
+df
+```
+
+We see the above values are very close to one calculated by R.
+
 ## f
 **Create a plot of the series with forecasts and prediction intervals for the next three periods shown.**
 
+
+```{r}
+autoplot(forecast(fit, h=3))
+```
+
+The plot shows decreasing trend for forecast in the next three periods.
 
 ## g
 **Does `auto.arima()` give the same model you have chosen? If not, which model do you think is better?**
 
 
+```{r}
+auto.arima(wmurders)
+```
+
+auto.arima() produces the same **ARIMA(1,2,1)** model that we have chosen earlier at solution **a**.
 
 
 
