@@ -1,1 +1,39 @@
+---
+title: "Data624 - Project1"
+author: "Amit Kapoor"
+date: "3/28/2021"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    highlight: pygments
+    number_sections: no
+    theme: flatly
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r lib, include=FALSE}
+# Libraries
+
+```
+
+
+# Part A - ATM Forecast 
+
+
+
+# Part B - Forecasting Power
+
+
+
+# Part C - Waterflow Pipe
+
+
+
 
