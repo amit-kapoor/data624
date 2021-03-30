@@ -18,22 +18,72 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
+# Overview
+
+This project includes 3 time series dataset and requires to select best forecasting model for all 3 datasets.
+
+* Part A - ATM Forecast 
+* Part B - Forecasting Power
+* Part C - Waterflow Pipe
+
+
 ```{r lib, include=FALSE}
 # Libraries
-
+library(readxl)
 ```
 
 
+
 # Part A - ATM Forecast 
+
+```{r warning=FALSE}
+temp.file <- tempfile(fileext = ".xlsx")
+download.file(url="https://github.com/amit-kapoor/data624/blob/main/Project1/ATM624Data.xlsx?raw=true", 
+              destfile = temp.file, 
+              mode = "wb", 
+              quiet = TRUE)
+atm.data <- read_excel(temp.file, skip=0, col_types = c("date","text","numeric"))
+
+head(atm.data)
+```
 
 
 
 # Part B - Forecasting Power
 
+```{r warning=FALSE}
+
+download.file(
+  url="https://github.com/amit-kapoor/data624/blob/main/Project1/ResidentialCustomerForecastLoad-624.xlsx?raw=true", 
+  destfile = temp.file, 
+  mode = "wb", 
+  quiet = TRUE)
+power.data <- read_excel(temp.file, skip=0, col_types = c("numeric","text","numeric"))
+
+head(power.data)
+```
+
+
+
 
 
 # Part C - Waterflow Pipe
 
+```{r warning=FALSE}
 
+download.file(url="https://github.com/amit-kapoor/data624/blob/main/Project1/Waterflow_Pipe1.xlsx?raw=true", 
+              destfile = temp.file, 
+              mode = "wb", 
+              quiet = TRUE)
+pipe1.data <- read_excel(temp.file, skip=0, col_types = c("date","numeric"))
+
+download.file(url="https://github.com/amit-kapoor/data624/blob/main/Project1/Waterflow_Pipe2.xlsx?raw=true", 
+              destfile = temp.file, 
+              mode = "wb", 
+              quiet = TRUE)
+
+pipe2.data <- read_excel(temp.file, skip=0, col_types = c("date","numeric"))
+head(pipe1.data)
+```
 
 
