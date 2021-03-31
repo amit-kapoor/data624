@@ -27,9 +27,13 @@ This project includes 3 time series dataset and requires to select best forecast
 * Part C - Waterflow Pipe
 
 
-```{r lib, include=FALSE}
+```{r lib, include=FALSE, message=FALSE}
 # Libraries
 library(readxl)
+library(ggplot2)
+library(tidyverse)
+library(psych)
+library(forecast)
 ```
 
 
@@ -45,6 +49,61 @@ download.file(url="https://github.com/amit-kapoor/data624/blob/main/Project1/ATM
 atm.data <- read_excel(temp.file, skip=0, col_types = c("date","text","numeric"))
 
 head(atm.data)
+```
+
+
+```{r}
+# rows missing values
+atm.data[!complete.cases(atm.data),]
+```
+
+
+```{r}
+ggplot(atm.data[complete.cases(atm.data),] , aes(x=DATE, y=Cash, col=ATM )) + 
+  geom_line(show.legend = FALSE) + 
+  facet_wrap(~ATM, ncol=1, scales = "free")
+```
+
+
+```{r}
+ggplot(atm.data[complete.cases(atm.data),] , aes(x=Cash )) + 
+  geom_histogram(bins=20) + 
+  facet_grid(cols=vars(ATM), scales = "free")
+```
+
+
+```{r}
+# consider complete cases
+atm.comp <- atm.data[complete.cases(atm.data),]
+# pivot wider with cols from 4 ATMs and their values as Cash
+atm.comp <- atm.comp %>% pivot_wider(names_from = ATM, values_from = Cash)
+head(atm.comp)
+```
+
+```{r}
+# summary
+atm.comp %>% select(-DATE) %>% summary()
+```
+
+
+
+Per above exploratory analysis, all ATMs show different patterns. We would perform forecasting for each ATM separately.
+
+* ATM1 and ATM2 shows similar pattern (approx.) throughout the time. ATM1 and ATM2 have 3 and 2 missing entries respectively.
+* ATM3 appears to become online in last 3 days only and rest of days appears inactive. So tha data available for this ATM is very limited.
+* ATM4 requires replacement for outlier and we can assume that one day spike of cash withdrawal is unique. It has an outlier showing withdrawl amount 10920.
+
+
+```{r}
+atm.ts <- ts(atm.comp %>% select(-DATE))
+head(atm.ts)
+```
+
+
+
+```{r}
+atm.ts.cln <- sapply(X=atm.ts, tsclean)
+atm.ts.cln %>% summary()
 ```
 
 
