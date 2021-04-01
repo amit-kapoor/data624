@@ -40,6 +40,11 @@ library(forecast)
 
 # Part A - ATM Forecast 
 
+The dataset contains cash withdrawals from 4 different ATM machines from May 2009 to Apr 2010. The variable ‘Cash’ is provided in hundreds of dollars and data is in a single file. Before starting our analysis we will first download the excel from github and then read it through read_excel.
+
+
+## Exploratory Analysis
+
 ```{r warning=FALSE}
 temp.file <- tempfile(fileext = ".xlsx")
 download.file(url="https://github.com/amit-kapoor/data624/blob/main/Project1/ATM624Data.xlsx?raw=true", 
@@ -48,7 +53,7 @@ download.file(url="https://github.com/amit-kapoor/data624/blob/main/Project1/ATM
               quiet = TRUE)
 atm.data <- read_excel(temp.file, skip=0, col_types = c("date","text","numeric"))
 
-head(atm.data)
+glimpse(atm.data)
 ```
 
 
@@ -94,6 +99,10 @@ Per above exploratory analysis, all ATMs show different patterns. We would perfo
 * ATM4 requires replacement for outlier and we can assume that one day spike of cash withdrawal is unique. It has an outlier showing withdrawl amount 10920.
 
 
+## Data Cleaning
+
+
+
 ```{r}
 atm.ts <- ts(atm.comp %>% select(-DATE))
 head(atm.ts)
@@ -106,6 +115,32 @@ atm.ts.cln <- sapply(X=atm.ts, tsclean)
 atm.ts.cln %>% summary()
 ```
 
+
+
+```{r}
+# convert into data frame, pivot longer , arrange by ATM and bind with dates
+atm.new <- as.data.frame(atm.ts.cln) %>% 
+  pivot_longer(everything(), names_to = "ATM", values_to = "Cash") %>% 
+  arrange(ATM)
+
+atm.new <- cbind(DATE = seq(as.Date("2009-05-1"), as.Date("2010-04-30"), length.out=365), 
+                 atm.new)
+head(atm.new)
+```
+
+```{r}
+#library(xlsx)
+
+#write.xlsx(atm.new, 'atmnew.xlsx', sheetName = "Sheet1", col.names = TRUE, row.names = TRUE, append = FALSE)
+```
+
+
+
+```{r}
+ggplot(atm.new , aes(x=DATE, y=Cash, col=ATM )) + 
+  geom_line(show.legend = FALSE) + 
+  facet_wrap(~ATM, ncol=1, scales = "free")
+```
 
 
 # Part B - Forecasting Power
