@@ -3,14 +3,14 @@ title: "Data624 - Project1"
 author: "Amit Kapoor"
 date: "3/28/2021"
 output:
-  pdf_document:
-    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
+  pdf_document:
+    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -101,7 +101,7 @@ Per above exploratory analysis, all ATMs show different patterns. We would perfo
 
 ## Data Cleaning
 
-
+For this part we will first apply ts() function to get required time series. Next step is to apply tsclean function that will handle missing data along with outliers. To estimate missing values and outlier replacements, this function uses linear interpolation on the (possibly seasonally adjusted) series. Once we get the clean data we will use pivot_longer to get the dataframe in its original form.
 
 ```{r}
 atm.ts <- ts(atm.comp %>% select(-DATE))
@@ -111,11 +111,12 @@ head(atm.ts)
 
 
 ```{r}
+# apply tsclean
 atm.ts.cln <- sapply(X=atm.ts, tsclean)
 atm.ts.cln %>% summary()
 ```
 
-
+If we compare this summary with previous one of original data, ATM1 and ATM2 has nomore NAs and ATM4 outlier value (10919.762) is handled and now the max value is 1712.075.
 
 ```{r}
 # convert into data frame, pivot longer , arrange by ATM and bind with dates
@@ -142,6 +143,7 @@ ggplot(atm.new , aes(x=DATE, y=Cash, col=ATM )) +
   facet_wrap(~ATM, ncol=1, scales = "free")
 ```
 
+Though above plot doesn't show much differences for ATM1,2,3 but it handled the ATM4 data very well after replacing the outlier.
 
 # Part B - Forecasting Power
 
