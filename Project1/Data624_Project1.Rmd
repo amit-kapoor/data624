@@ -3,14 +3,14 @@ title: "Data624 - Project1"
 author: "Amit Kapoor"
 date: "3/28/2021"
 output:
+  pdf_document:
+    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
-  pdf_document:
-    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -34,6 +34,7 @@ library(ggplot2)
 library(tidyverse)
 library(psych)
 library(forecast)
+library(gridExtra)
 ```
 
 
@@ -148,6 +149,36 @@ Though above plot doesn't show much differences for ATM1,2,3 but tsclean handled
 
 ## Time Series
 
+
+```{r func-fcst}
+# function to plot forecast(s)
+atm.forecast <- function(timeseries) {
+  # lambda value
+  lambda <- BoxCox.lambda(timeseries)
+  # models for forecast
+  ets.model <- timeseries %>% ets(lambda = lambda)
+  arima.model <- timeseries %>% auto.arima(lambda = lambda)
+  # forecast
+  atm.ets.fcst <- forecast(ets.model, h=31)
+  atm.arima.fcst <- forecast(arima.model, h=31)
+  # plot forecasts
+  p1 <- autoplot(timeseries) + 
+    autolayer(atm.ets.fcst, PI=FALSE, series="ETS") + 
+    autolayer(atm.arima.fcst, PI=FALSE, series="ARIMA") + 
+    theme(legend.position = "top") + 
+    ylab("Cash Withdrawl") 
+  # zoom in plot
+  p2 <- p1 + 
+    labs(title = "Zoom in ") + 
+    xlim(c(51,56))
+  
+  grid.arrange(p1,p2,ncol=1)
+
+}
+```
+
+
+
 ### ATM1
 
 ```{r atm1}
@@ -156,11 +187,20 @@ ggtsdisplay(atm1.ts, main="ATM1 Cash Withdrawal", ylab="cash withdrawal", xlab="
 ```
 
 
+```{r}
+atm.forecast(atm1.ts)
+```
+
+
 ### ATM2
 
 ```{r atm2}
 atm2.ts <- atm.new %>% filter(ATM=="ATM2") %>% select(Cash) %>% ts(frequency = 7)
 ggtsdisplay(atm2.ts, main="ATM2 Cash Withdrawal", ylab="cash withdrawal", xlab="week")
+```
+
+```{r}
+atm.forecast(atm2.ts)
 ```
 
 
@@ -181,6 +221,29 @@ autoplot(atm3.ts, main="ATM3 Cash Withdrawal", ylab="cash withdrawal", xlab="wee
 atm4.ts <- atm.new %>% filter(ATM=="ATM4") %>% select(Cash) %>% ts(frequency = 7)
 ggtsdisplay(atm4.ts, main="ATM4 Cash Withdrawal", ylab="cash withdrawal", xlab="week")
 ```
+
+
+
+
+
+```{r}
+atm.forecast(atm4.ts)
+```
+
+
+
+```{r}
+atm4.ts %>% ets(lambda = BoxCox.lambda(atm4.ts))
+```
+
+
+
+
+```{r}
+atm4.ts %>% auto.arima(lambda = BoxCox.lambda(atm4.ts))
+```
+
+
 
 
 
