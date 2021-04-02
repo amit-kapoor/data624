@@ -3,14 +3,14 @@ title: "Data624 - Project1"
 author: "Amit Kapoor"
 date: "3/28/2021"
 output:
-  pdf_document:
-    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
+  pdf_document:
+    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -150,19 +150,24 @@ Though above plot doesn't show much differences for ATM1,2,3 but tsclean handled
 ## Time Series
 
 
+Function to plot forecast for various models.
+
 ```{r func-fcst}
 # function to plot forecast(s)
 atm.forecast <- function(timeseries) {
   # lambda value
   lambda <- BoxCox.lambda(timeseries)
   # models for forecast
+  hw.model <- timeseries %>% hw(h=31, seasonal = "additive", lambda = lambda, damped = TRUE)
   ets.model <- timeseries %>% ets(lambda = lambda)
   arima.model <- timeseries %>% auto.arima(lambda = lambda)
   # forecast
+  atm.hw.fcst <- forecast(hw.model, h=31)
   atm.ets.fcst <- forecast(ets.model, h=31)
   atm.arima.fcst <- forecast(arima.model, h=31)
   # plot forecasts
   p1 <- autoplot(timeseries) + 
+    autolayer(atm.hw.fcst, PI=FALSE, series="Holt-Winters") + 
     autolayer(atm.ets.fcst, PI=FALSE, series="ETS") + 
     autolayer(atm.arima.fcst, PI=FALSE, series="ARIMA") + 
     theme(legend.position = "top") + 
@@ -174,6 +179,27 @@ atm.forecast <- function(timeseries) {
   
   grid.arrange(p1,p2,ncol=1)
 
+}
+```
+
+
+Function to calculate RMSEs for various models.
+
+```{r rmse}
+model_accuracy <- function(timeseries) {
+  # lambda value
+  lambda <- BoxCox.lambda(timeseries)
+  # models for forecast
+  hw.model <- timeseries %>% hw(h=31, seasonal = "additive", lambda = lambda, damped = TRUE)
+  ets.model <- timeseries %>% ets(lambda = lambda)
+  arima.model <- timeseries %>% auto.arima(lambda = lambda)
+  # dataframe having rmse
+  rmse = data.frame(RMSE=cbind(accuracy(hw.model)[,2],
+                                   accuracy(ets.model)[,2],
+                                   accuracy(arima.model)[,2]))
+  names(rmse) = c("Holt-Winters", "ETS", "ARIMA")
+  # display rmse
+  rmse
 }
 ```
 
@@ -191,6 +217,10 @@ ggtsdisplay(atm1.ts, main="ATM1 Cash Withdrawal", ylab="cash withdrawal", xlab="
 atm.forecast(atm1.ts)
 ```
 
+```{r}
+model_accuracy(atm1.ts)
+```
+
 
 ### ATM2
 
@@ -201,6 +231,10 @@ ggtsdisplay(atm2.ts, main="ATM2 Cash Withdrawal", ylab="cash withdrawal", xlab="
 
 ```{r}
 atm.forecast(atm2.ts)
+```
+
+```{r}
+model_accuracy(atm2.ts)
 ```
 
 
@@ -230,6 +264,9 @@ ggtsdisplay(atm4.ts, main="ATM4 Cash Withdrawal", ylab="cash withdrawal", xlab="
 atm.forecast(atm4.ts)
 ```
 
+```{r}
+model_accuracy(atm4.ts)
+```
 
 
 ```{r}
