@@ -1,0 +1,289 @@
+---
+title: "Data624 - Project1"
+author: "Amit Kapoor"
+date: "3/28/2021"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    highlight: pygments
+    number_sections: no
+    theme: flatly
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Overview
+
+This project includes 3 time series dataset and requires to select best forecasting model for all 3 datasets.
+
+* Part A - ATM Forecast 
+* Part B - Forecasting Power
+* Part C - Waterflow Pipe
+
+
+```{r lib, include=FALSE, message=FALSE}
+# Libraries
+library(readxl)
+library(ggplot2)
+library(tidyverse)
+library(psych)
+library(forecast)
+library(gridExtra)
+```
+
+
+
+# Part A - ATM Forecast 
+
+The dataset contains cash withdrawals from 4 different ATM machines from May 2009 to Apr 2010. The variable ‘Cash’ is provided in hundreds of dollars and data is in a single file. Before starting our analysis we will first download the excel from github and then read it through read_excel.
+
+
+## Exploratory Analysis
+
+```{r warning=FALSE}
+temp.file <- tempfile(fileext = ".xlsx")
+download.file(url="https://github.com/amit-kapoor/data624/blob/main/Project1/ATM624Data.xlsx?raw=true", 
+              destfile = temp.file, 
+              mode = "wb", 
+              quiet = TRUE)
+atm.data <- read_excel(temp.file, skip=0, col_types = c("date","text","numeric"))
+
+glimpse(atm.data)
+```
+
+
+```{r}
+# rows missing values
+atm.data[!complete.cases(atm.data),]
+```
+
+
+```{r}
+ggplot(atm.data[complete.cases(atm.data),] , aes(x=DATE, y=Cash, col=ATM )) + 
+  geom_line(show.legend = FALSE) + 
+  facet_wrap(~ATM, ncol=1, scales = "free")
+```
+
+
+```{r}
+ggplot(atm.data[complete.cases(atm.data),] , aes(x=Cash )) + 
+  geom_histogram(bins=20) + 
+  facet_grid(cols=vars(ATM), scales = "free")
+```
+
+
+```{r}
+# consider complete cases
+atm.comp <- atm.data[complete.cases(atm.data),]
+# pivot wider with cols from 4 ATMs and their values as Cash
+atm.comp <- atm.comp %>% pivot_wider(names_from = ATM, values_from = Cash)
+head(atm.comp)
+```
+
+```{r}
+# summary
+atm.comp %>% select(-DATE) %>% summary()
+```
+
+
+
+Per above exploratory analysis, all ATMs show different patterns. We would perform forecasting for each ATM separately.
+
+* ATM1 and ATM2 shows similar pattern (approx.) throughout the time. ATM1 and ATM2 have 3 and 2 missing entries respectively.
+* ATM3 appears to become online in last 3 days only and rest of days appears inactive. So tha data available for this ATM is very limited.
+* ATM4 requires replacement for outlier and we can assume that one day spike of cash withdrawal is unique. It has an outlier showing withdrawl amount 10920.
+
+
+## Data Cleaning
+
+For this part we will first apply ts() function to get required time series. Next step is to apply tsclean function that will handle missing data along with outliers. To estimate missing values and outlier replacements, this function uses linear interpolation on the (possibly seasonally adjusted) series. Once we get the clean data we will use pivot_longer to get the dataframe in its original form.
+
+```{r}
+atm.ts <- ts(atm.comp %>% select(-DATE))
+head(atm.ts)
+```
+
+
+
+```{r}
+# apply tsclean
+atm.ts.cln <- sapply(X=atm.ts, tsclean)
+atm.ts.cln %>% summary()
+```
+
+If we compare this summary with previous one of original data, ATM1 and ATM2 has nomore NAs and ATM4 outlier value (10919.762) is handled and now the max value is 1712.075.
+
+```{r}
+# convert into data frame, pivot longer , arrange by ATM and bind with dates
+atm.new <- as.data.frame(atm.ts.cln) %>% 
+  pivot_longer(everything(), names_to = "ATM", values_to = "Cash") %>% 
+  arrange(ATM)
+
+atm.new <- cbind(DATE = seq(as.Date("2009-05-1"), as.Date("2010-04-30"), length.out=365), 
+                 atm.new)
+
+head(atm.new)
+```
+
+```{r}
+#library(xlsx)
+#write.xlsx(atm.new, 'atmnew.xlsx', sheetName = "Sheet1", col.names = TRUE, row.names = TRUE, append = FALSE)
+```
+
+
+
+```{r}
+ggplot(atm.new , aes(x=DATE, y=Cash, col=ATM )) + 
+  geom_line(show.legend = FALSE) + 
+  facet_wrap(~ATM, ncol=1, scales = "free")
+```
+
+Though above plot doesn't show much differences for ATM1,2,3 but tsclean handled the ATM4 data very well after replacing the outlier.
+
+
+## Time Series
+
+
+```{r func-fcst}
+# function to plot forecast(s)
+atm.forecast <- function(timeseries) {
+  # lambda value
+  lambda <- BoxCox.lambda(timeseries)
+  # models for forecast
+  ets.model <- timeseries %>% ets(lambda = lambda)
+  arima.model <- timeseries %>% auto.arima(lambda = lambda)
+  # forecast
+  atm.ets.fcst <- forecast(ets.model, h=31)
+  atm.arima.fcst <- forecast(arima.model, h=31)
+  # plot forecasts
+  p1 <- autoplot(timeseries) + 
+    autolayer(atm.ets.fcst, PI=FALSE, series="ETS") + 
+    autolayer(atm.arima.fcst, PI=FALSE, series="ARIMA") + 
+    theme(legend.position = "top") + 
+    ylab("Cash Withdrawl") 
+  # zoom in plot
+  p2 <- p1 + 
+    labs(title = "Zoom in ") + 
+    xlim(c(51,56))
+  
+  grid.arrange(p1,p2,ncol=1)
+
+}
+```
+
+
+
+### ATM1
+
+```{r atm1}
+atm1.ts <- atm.new %>% filter(ATM=="ATM1") %>% select(Cash) %>% ts(frequency = 7)
+ggtsdisplay(atm1.ts, main="ATM1 Cash Withdrawal", ylab="cash withdrawal", xlab="week")
+```
+
+
+```{r}
+atm.forecast(atm1.ts)
+```
+
+
+### ATM2
+
+```{r atm2}
+atm2.ts <- atm.new %>% filter(ATM=="ATM2") %>% select(Cash) %>% ts(frequency = 7)
+ggtsdisplay(atm2.ts, main="ATM2 Cash Withdrawal", ylab="cash withdrawal", xlab="week")
+```
+
+```{r}
+atm.forecast(atm2.ts)
+```
+
+
+### ATM3
+
+
+```{r atm3}
+atm3.ts <- atm.new %>% filter(ATM=="ATM3") %>% select(Cash) %>% ts(frequency = 7)
+autoplot(atm3.ts, main="ATM3 Cash Withdrawal", ylab="cash withdrawal", xlab="week")
+```
+
+
+
+### ATM4
+
+
+```{r atm4}
+atm4.ts <- atm.new %>% filter(ATM=="ATM4") %>% select(Cash) %>% ts(frequency = 7)
+ggtsdisplay(atm4.ts, main="ATM4 Cash Withdrawal", ylab="cash withdrawal", xlab="week")
+```
+
+
+
+
+
+```{r}
+atm.forecast(atm4.ts)
+```
+
+
+
+```{r}
+atm4.ts %>% ets(lambda = BoxCox.lambda(atm4.ts))
+```
+
+
+
+
+```{r}
+atm4.ts %>% auto.arima(lambda = BoxCox.lambda(atm4.ts))
+```
+
+
+
+
+
+
+# Part B - Forecasting Power
+
+```{r warning=FALSE}
+
+download.file(
+  url="https://github.com/amit-kapoor/data624/blob/main/Project1/ResidentialCustomerForecastLoad-624.xlsx?raw=true", 
+  destfile = temp.file, 
+  mode = "wb", 
+  quiet = TRUE)
+power.data <- read_excel(temp.file, skip=0, col_types = c("numeric","text","numeric"))
+
+head(power.data)
+```
+
+
+
+
+
+
+# Part C - Waterflow Pipe
+
+```{r warning=FALSE}
+
+download.file(url="https://github.com/amit-kapoor/data624/blob/main/Project1/Waterflow_Pipe1.xlsx?raw=true", 
+              destfile = temp.file, 
+              mode = "wb", 
+              quiet = TRUE)
+pipe1.data <- read_excel(temp.file, skip=0, col_types = c("date","numeric"))
+
+download.file(url="https://github.com/amit-kapoor/data624/blob/main/Project1/Waterflow_Pipe2.xlsx?raw=true", 
+              destfile = temp.file, 
+              mode = "wb", 
+              quiet = TRUE)
+
+pipe2.data <- read_excel(temp.file, skip=0, col_types = c("date","numeric"))
+head(pipe1.data)
+```
+
+
