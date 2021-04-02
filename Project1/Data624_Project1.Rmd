@@ -126,12 +126,12 @@ atm.new <- as.data.frame(atm.ts.cln) %>%
 
 atm.new <- cbind(DATE = seq(as.Date("2009-05-1"), as.Date("2010-04-30"), length.out=365), 
                  atm.new)
+
 head(atm.new)
 ```
 
 ```{r}
 #library(xlsx)
-
 #write.xlsx(atm.new, 'atmnew.xlsx', sheetName = "Sheet1", col.names = TRUE, row.names = TRUE, append = FALSE)
 ```
 
@@ -143,7 +143,47 @@ ggplot(atm.new , aes(x=DATE, y=Cash, col=ATM )) +
   facet_wrap(~ATM, ncol=1, scales = "free")
 ```
 
-Though above plot doesn't show much differences for ATM1,2,3 but it handled the ATM4 data very well after replacing the outlier.
+Though above plot doesn't show much differences for ATM1,2,3 but tsclean handled the ATM4 data very well after replacing the outlier.
+
+
+## Time Series
+
+### ATM1
+
+```{r atm1}
+atm1.ts <- atm.new %>% filter(ATM=="ATM1") %>% select(Cash) %>% ts(frequency = 7)
+ggtsdisplay(atm1.ts, main="ATM1 Cash Withdrawal", ylab="cash withdrawal", xlab="week")
+```
+
+
+### ATM2
+
+```{r atm2}
+atm2.ts <- atm.new %>% filter(ATM=="ATM2") %>% select(Cash) %>% ts(frequency = 7)
+ggtsdisplay(atm2.ts, main="ATM2 Cash Withdrawal", ylab="cash withdrawal", xlab="week")
+```
+
+
+### ATM3
+
+
+```{r atm3}
+atm3.ts <- atm.new %>% filter(ATM=="ATM3") %>% select(Cash) %>% ts(frequency = 7)
+autoplot(atm3.ts, main="ATM3 Cash Withdrawal", ylab="cash withdrawal", xlab="week")
+```
+
+
+
+### ATM4
+
+
+```{r atm4}
+atm4.ts <- atm.new %>% filter(ATM=="ATM4") %>% select(Cash) %>% ts(frequency = 7)
+ggtsdisplay(atm4.ts, main="ATM4 Cash Withdrawal", ylab="cash withdrawal", xlab="week")
+```
+
+
+
 
 # Part B - Forecasting Power
 
@@ -158,6 +198,7 @@ power.data <- read_excel(temp.file, skip=0, col_types = c("numeric","text","nume
 
 head(power.data)
 ```
+
 
 
 
