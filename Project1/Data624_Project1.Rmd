@@ -3,14 +3,14 @@ title: "Data624 - Project1"
 author: "Amit Kapoor"
 date: "3/28/2021"
 output:
+  pdf_document:
+    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
-  pdf_document:
-    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -35,6 +35,8 @@ library(tidyverse)
 library(psych)
 library(forecast)
 library(gridExtra)
+library(fpp2)
+library(urca)
 ```
 
 
@@ -207,10 +209,66 @@ model_accuracy <- function(timeseries) {
 
 ### ATM1
 
+Seeing the time series plot, it is clear that there is a seasonality in the data. We can see increasing and decreasing activities over the weeks in below plot. From the ACF plot, we can see a slight decrease in every 7th lag due to trend. PACF plot shows some significant lags at the beginning. 
+
+
 ```{r atm1}
 atm1.ts <- atm.new %>% filter(ATM=="ATM1") %>% select(Cash) %>% ts(frequency = 7)
 ggtsdisplay(atm1.ts, main="ATM1 Cash Withdrawal", ylab="cash withdrawal", xlab="week")
 ```
+
+
+From the above plots it is evident that the time series is non stationary, showing seasonality and will require differencing to make it stationary.
+
+
+```{r}
+atm1.lambda <- BoxCox.lambda(atm1.ts)
+atm1.ts.bc <- BoxCox(atm1.ts, atm1.lambda )
+ggtsdisplay(atm1.ts.bc, main=paste("ATM1 Cash Withdrawal",round(atm1.lambda, 3)), ylab="cash withdrawal", xlab="week")
+```
+
+
+
+
+```{r}
+# Number of differences required for a stationary series
+ndiffs(atm1.ts.bc)
+```
+
+```{r}
+# Number of differences required for a seasonally stationary series
+nsdiffs(atm1.ts.bc)
+```
+
+
+```{r}
+atm1.ts.bc %>% diff(lag=7) %>% ur.kpss() %>% summary()
+```
+
+
+```{r}
+atm1.ts.bc %>% diff(lag=7) %>% ggtsdisplay()
+```
+
+
+
+```{r}
+atm1.ts %>% ets(lambda = atm1.lambda )
+```
+
+
+
+
+
+```{r}
+atm1.ts %>% auto.arima(lambda = atm1.lambda )
+```
+
+
+```{r}
+checkresiduals(atm1.ts %>% auto.arima(lambda = atm1.lambda ))
+```
+
 
 
 ```{r}
@@ -228,6 +286,42 @@ model_accuracy(atm1.ts)
 atm2.ts <- atm.new %>% filter(ATM=="ATM2") %>% select(Cash) %>% ts(frequency = 7)
 ggtsdisplay(atm2.ts, main="ATM2 Cash Withdrawal", ylab="cash withdrawal", xlab="week")
 ```
+
+
+```{r}
+atm2.lambda <- BoxCox.lambda(atm2.ts)
+atm2.ts.bc <- BoxCox(atm2.ts, atm2.lambda )
+ggtsdisplay(atm2.ts.bc, main=paste("ATM2 Cash Withdrawal",round(atm2.lambda, 3)), ylab="cash withdrawal", xlab="week")
+```
+
+
+```{r}
+# Number of differences required for a stationary series
+ndiffs(atm2.ts.bc)
+```
+
+
+```{r}
+# Number of differences required for a seasonally stationary series
+nsdiffs(atm2.ts.bc)
+```
+
+
+```{r}
+atm2.ts.bc %>% diff(lag=7) %>% ur.kpss() %>% summary()
+```
+
+
+```{r}
+atm2.ts.bc %>% diff(lag=7) %>% ggtsdisplay()
+```
+
+
+
+
+
+
+
 
 ```{r}
 atm.forecast(atm2.ts)
@@ -255,6 +349,39 @@ autoplot(atm3.ts, main="ATM3 Cash Withdrawal", ylab="cash withdrawal", xlab="wee
 atm4.ts <- atm.new %>% filter(ATM=="ATM4") %>% select(Cash) %>% ts(frequency = 7)
 ggtsdisplay(atm4.ts, main="ATM4 Cash Withdrawal", ylab="cash withdrawal", xlab="week")
 ```
+
+
+
+```{r}
+atm4.lambda <- BoxCox.lambda(atm4.ts)
+atm4.ts.bc <- BoxCox(atm4.ts, atm4.lambda )
+ggtsdisplay(atm4.ts.bc, main=paste("ATM4 Cash Withdrawal",round(atm4.lambda, 3)), ylab="cash withdrawal", xlab="week")
+```
+
+
+```{r}
+# Number of differences required for a stationary series
+ndiffs(atm4.ts.bc)
+```
+
+
+```{r}
+# Number of differences required for a seasonally stationary series
+nsdiffs(atm4.ts.bc)
+```
+
+
+```{r}
+atm4.ts.bc %>% ur.kpss() %>% summary()
+```
+
+
+```{r}
+atm4.ts.bc %>% diff(lag=7) %>% ggtsdisplay()
+```
+
+
+
 
 
 
