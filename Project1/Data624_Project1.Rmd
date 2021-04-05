@@ -3,14 +3,14 @@ title: "Data624 - Project1"
 author: "Amit Kapoor"
 date: "3/28/2021"
 output:
-  pdf_document:
-    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
+  pdf_document:
+    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -188,13 +188,35 @@ atm.forecast <- function(timeseries) {
 Function to calculate RMSEs for various models.
 
 ```{r rmse}
-model_accuracy <- function(timeseries) {
+model_accuracy <- function(timeseries, atm_num) {
   # lambda value
   lambda <- BoxCox.lambda(timeseries)
+  
   # models for forecast
   hw.model <- timeseries %>% hw(h=31, seasonal = "additive", lambda = lambda, damped = TRUE)
   ets.model <- timeseries %>% ets(lambda = lambda)
-  arima.model <- timeseries %>% auto.arima(lambda = lambda)
+  
+  # Arima model
+  if (atm_num == 1) {
+    # for ATM1
+    arima.model <- timeseries %>% Arima(order=c(0,0,2), 
+                                        seasonal = c(0,1,1), 
+                                        lambda = lambda)
+  } else if(atm_num == 2) {
+    # for ATM2
+    arima.model <- timeseries %>% Arima(order=c(3,0,3), 
+                                        seasonal = c(0,1,1), 
+                                        include.drift = TRUE, 
+                                        lambda = lambda)
+  } else {
+    # for ATM4
+    arima.model <- timeseries %>% Arima(order=c(0,0,1), 
+                                    seasonal = c(2,0,0), 
+                                    include.drift = TRUE, 
+                                    lambda = lambda)
+  }
+  
+  
   # dataframe having rmse
   rmse = data.frame(RMSE=cbind(accuracy(hw.model)[,2],
                                    accuracy(ets.model)[,2],
@@ -276,7 +298,7 @@ atm.forecast(atm1.ts)
 ```
 
 ```{r}
-model_accuracy(atm1.ts)
+model_accuracy(atm1.ts,1)
 ```
 
 
@@ -317,6 +339,9 @@ atm2.ts.bc %>% diff(lag=7) %>% ggtsdisplay()
 ```
 
 
+```{r}
+atm2.ts %>% auto.arima(lambda = atm2.lambda )
+```
 
 
 
@@ -328,7 +353,7 @@ atm.forecast(atm2.ts)
 ```
 
 ```{r}
-model_accuracy(atm2.ts)
+model_accuracy(atm2.ts,2)
 ```
 
 
@@ -342,7 +367,12 @@ autoplot(atm3.ts, main="ATM3 Cash Withdrawal", ylab="cash withdrawal", xlab="wee
 
 
 
+
+
 ### ATM4
+
+Seeing the time series plot, it is apparent that there is seasonality in this series. ACF shows a decrease in every 7th lag. From the PACF, there are few significant lags at the beginning but others within critical limit. Overall, it is non stationary, having seasonality and might require differencing for it to become stationary.
+
 
 
 ```{r atm4}
@@ -350,6 +380,13 @@ atm4.ts <- atm.new %>% filter(ATM=="ATM4") %>% select(Cash) %>% ts(frequency = 7
 ggtsdisplay(atm4.ts, main="ATM4 Cash Withdrawal", ylab="cash withdrawal", xlab="week")
 ```
 
+From the subseries plot, it is clear that Sunday is having highest mean for cash withdrawl while Saturday has the lowest.
+
+```{r}
+ggsubseriesplot(atm4.ts, main="ATM4 Cash Withdrawal")
+```
+
+Next step is to apply BoxCox transformation. With $\lambda$ being 0.45, the resulting transformation does handle the variablity in time series as shown in below transformed plot.
 
 
 ```{r}
@@ -371,44 +408,58 @@ nsdiffs(atm4.ts.bc)
 ```
 
 
+It shows number of differences required is 0 for boxcox transformed data. 
+
+
 ```{r}
 atm4.ts.bc %>% ur.kpss() %>% summary()
 ```
 
 
+We can see the test statistic small and well within the range we would expect for stationary data. So we can conclude that the data are stationary.
+
+
 ```{r}
-atm4.ts.bc %>% diff(lag=7) %>% ggtsdisplay()
+atm4.ts.bc %>% ggtsdisplay()
 ```
 
 
+First we will start with Holt-Winters damped method. Damping is possible with both additive and multiplicative Holt-Winters’ methods. This method often provides accurate and robust forecasts for seasonal data is the Holt-Winters method with a damped trend.
 
 
+```{r}
+# Holt Winters
+atm4.ts %>% hw(h=31, seasonal = "additive", lambda = atm4.lambda, damped = TRUE)
+```
 
 
+Next is to apply exponential smoothing method on this time series. It shows that the ETS(A, N, A) model best fits for the  transformed ATM4, i.e. exponential smoothing with additive error, no trend component and additive seasonality.
 
+```{r}
+# ETS
+atm4.ts %>% ets(lambda = atm4.lambda)
+```
+
+
+Next we will find out the appropriate ARIMA model for this time series. The suggested model seeems ARIMA(0,0,1)(2,0,0)[7] with non-zero mean.
+
+```{r}
+# Arima
+atm4.ts %>% auto.arima(lambda = atm4.lambda)
+```
+
+Next is to plot the forecast for all the considered models above which will shows a nice visual comparison. it will also show a zoomed in plot to have a clearer view.
 
 ```{r}
 atm.forecast(atm4.ts)
 ```
 
-```{r}
-model_accuracy(atm4.ts)
-```
-
-
-```{r}
-atm4.ts %>% ets(lambda = BoxCox.lambda(atm4.ts))
-```
-
 
 
 
 ```{r}
-atm4.ts %>% auto.arima(lambda = BoxCox.lambda(atm4.ts))
+model_accuracy(atm4.ts,4)
 ```
-
-
-
 
 
 
