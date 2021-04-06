@@ -563,8 +563,50 @@ power.data <- read_excel(temp.file, skip=0, col_types = c("numeric","text","nume
 head(power.data)
 ```
 
+## Exploratory Analysis
 
 
+```{r}
+power.data$`YYYY-MMM` <- paste0(power.data$`YYYY-MMM`,"-01")
+power.data$Date <- lubridate::ymd(power.data$`YYYY-MMM`)
+
+ggplot(power.data, aes(x=Date, y=KWH )) + 
+  geom_line(color="darkblue")
+```
+
+
+## Data Cleaning
+
+```{r}
+power.ts <- ts(power.data$KWH, start=c(1998, 1), frequency = 12)
+head(power.ts)
+```
+
+
+
+```{r}
+power.ts <- tsclean(power.ts)
+power.ts %>% summary()
+```
+
+
+
+## Timeseries
+
+
+```{r}
+ggtsdisplay(power.ts, main="Residential Power Usage", ylab="Power Used", xlab="Month")
+```
+
+
+```{r}
+ggsubseriesplot(power.ts, main="Pwer Usage Subseries Plot", ylab="Power Used")
+```
+
+
+```{r}
+ggseasonplot(power.ts, polar=TRUE, main="Power Usage Seasonal Plot", ylab="Power Used")
+```
 
 
 
