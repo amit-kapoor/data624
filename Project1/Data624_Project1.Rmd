@@ -3,14 +3,14 @@ title: "Data624 - Project1"
 author: "Amit Kapoor"
 date: "3/28/2021"
 output:
+  pdf_document:
+    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
-  pdf_document:
-    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -133,10 +133,6 @@ atm.new <- cbind(DATE = seq(as.Date("2009-05-1"), as.Date("2010-04-30"), length.
 head(atm.new)
 ```
 
-```{r}
-#library(xlsx)
-#write.xlsx(atm.new, 'atmnew.xlsx', sheetName = "Sheet1", col.names = TRUE, row.names = TRUE, append = FALSE)
-```
 
 
 
@@ -187,58 +183,15 @@ atm.forecast <- function(timeseries) {
 
 Function to calculate RMSEs for various models.
 
-```{r rmse}
-model_accuracy <- function(timeseries, atm_num) {
-  # lambda value
-  lambda <- BoxCox.lambda(timeseries)
-  
-  # models for forecast
-  hw.model <- timeseries %>% hw(h=31, seasonal = "additive", lambda = lambda, damped = TRUE)
-  ets.model <- timeseries %>% ets(lambda = lambda)
-  
-  # Arima model
-  if (atm_num == 1) {
-    # for ATM1
-    arima.model <- timeseries %>% Arima(order=c(0,0,2), 
-                                        seasonal = c(0,1,1), 
-                                        lambda = lambda)
-  } else if(atm_num == 2) {
-    # for ATM2
-    arima.model <- timeseries %>% Arima(order=c(3,0,3), 
-                                        seasonal = c(0,1,1), 
-                                        include.drift = TRUE, 
-                                        lambda = lambda)
-  } else {
-    # for ATM4
-    arima.model <- timeseries %>% Arima(order=c(0,0,1), 
-                                    seasonal = c(2,0,0), 
-                                    include.drift = TRUE, 
-                                    lambda = lambda)
-  }
-  
-  
-  # dataframe having rmse
-  rmse = data.frame(RMSE=cbind(accuracy(hw.model)[,2],
-                                   accuracy(ets.model)[,2],
-                                   accuracy(arima.model)[,2]))
-  names(rmse) = c("Holt-Winters", "ETS", "ARIMA")
-  # display rmse
-  rmse
-}
-```
-
-
 
 ```{r rmse1}
-model_accuracy1 <- function(timeseries, atm_num) {
+model_accuracy <- function(timeseries, atm_num) {
   # lambda value
   lambda <- BoxCox.lambda(timeseries)
   
   # split the data to train and test
   train <- window(timeseries, end=c(40, 3))
-  print(length(train))
   test <- window(timeseries, start=c(40, 4))
-  print(length(test))
   
   # models for forecast
   hw.model <- train %>% hw(h=length(train), seasonal = "additive", lambda = lambda, damped = TRUE)
@@ -255,12 +208,12 @@ model_accuracy1 <- function(timeseries, atm_num) {
     arima.model <- train %>% Arima(order=c(3,0,3), 
                                         seasonal = c(0,1,1), 
                                         include.drift = TRUE, 
-                                        lambda = lambda)
+                                        lambda = lambda,
+                                        biasadj = TRUE)
   } else {
     # for ATM4
     arima.model <- train %>% Arima(order=c(0,0,1), 
                                     seasonal = c(2,0,0), 
-                                    include.drift = TRUE, 
                                     lambda = lambda)
   }
   
@@ -375,12 +328,10 @@ Let's plot the forecast for all the considered models above which will shows a n
 atm.forecast(atm1.ts)
 ```
 
-```{r}
-model_accuracy(atm1.ts,1)
-```
+
 
 ```{r}
-model_accuracy1(atm1.ts,1)
+model_accuracy(atm1.ts,1)
 ```
 
 
@@ -478,12 +429,9 @@ Next step is to plot the forecast for all the considered models above which will
 atm.forecast(atm2.ts)
 ```
 
-```{r}
-model_accuracy(atm2.ts,2)
-```
 
 ```{r}
-model_accuracy1(atm2.ts,2)
+model_accuracy(atm2.ts,2)
 ```
 
 
@@ -598,11 +546,6 @@ atm.forecast(atm4.ts)
 
 ```{r}
 model_accuracy(atm4.ts,4)
-```
-
-
-```{r}
-model_accuracy1(atm4.ts,4)
 ```
 
 
