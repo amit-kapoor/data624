@@ -3,14 +3,14 @@ title: "Data624 - Project1"
 author: "Amit Kapoor"
 date: "3/28/2021"
 output:
-  pdf_document:
-    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
+  pdf_document:
+    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -184,7 +184,7 @@ atm.forecast <- function(timeseries) {
 Function to calculate RMSEs for various models.
 
 
-```{r rmse1}
+```{r rmse}
 model_accuracy <- function(timeseries, atm_num) {
   # lambda value
   lambda <- BoxCox.lambda(timeseries)
@@ -548,6 +548,9 @@ atm.forecast(atm4.ts)
 model_accuracy(atm4.ts,4)
 ```
 
+## Forecast May, 2010
+
+
 
 # Part B - Forecasting Power
 
@@ -654,6 +657,45 @@ power.forecast <- function(timeseries) {
 
 
 
+```{r rmse1}
+powm_accuracy <- function(timeseries) {
+  # lambda value
+  lambda <- BoxCox.lambda(timeseries)
+  
+  # split the data to train and test
+  train <- window(timeseries, end=c(2009, 12))
+  test <- window(timeseries, start=2010)
+  
+  # models for forecast
+  hwa.model <- train %>% hw(h=length(train), seasonal = "additive", lambda = lambda, damped = TRUE)
+  hwm.model <- train %>% hw(h=length(train), seasonal = "multiplicative", damped = TRUE)
+  ets.model <- train %>% ets(model="AAA", lambda = lambda, biasadj = TRUE)
+  arima.model <- train %>% Arima(order=c(0,0,1), 
+                                        seasonal = c(2,1,0), 
+                                        include.drift = TRUE, 
+                                        lambda = lambda,
+                                        biasadj = TRUE)
+  
+  
+  # forecast
+  hwa.frct = forecast(hwa.model, h = length(test))$mean
+  hwm.frct = forecast(hwm.model, h = length(test))$mean
+  ets.frct = forecast(ets.model, h = length(test))$mean
+  arima.frct = forecast(arima.model, h = length(test))$mean
+  
+  # dataframe having rmse
+  rmse = data.frame(RMSE=cbind(accuracy(hwa.frct, test)[,2],
+                               accuracy(hwm.frct, test)[,2],
+                               accuracy(ets.frct, test)[,2],
+                              accuracy(arima.frct, test)[,2]))
+  names(rmse) = c("Holt-Winters Additive", "Holt-Winters Multiplicative", "ETS", "ARIMA")
+  
+  # display rmse
+  rmse
+}
+```
+
+
 
 ```{r}
 powerts.lambda <- BoxCox.lambda(power.ts)
@@ -724,6 +766,13 @@ checkresiduals(power.fit4)
 power.forecast(power.ts)
 ```
 
+
+
+```{r}
+powm_accuracy(power.ts)
+```
+
+## Forecast 2014
 
 
 
