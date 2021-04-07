@@ -609,6 +609,123 @@ ggseasonplot(power.ts, polar=TRUE, main="Power Usage Seasonal Plot", ylab="Power
 ```
 
 
+```{r}
+gglagplot(power.ts )
+```
+
+
+```{r pow-fcst}
+
+# function to plot forecast(s)
+power.forecast <- function(timeseries) {
+  # lambda value
+  lambda <- BoxCox.lambda(timeseries)
+  
+  # models for forecast
+  hwa.model <- timeseries %>% hw(h=12, seasonal = "additive", lambda = lambda, damped = TRUE)
+  hwm.model <- timeseries %>% hw(h=12, seasonal = "multiplicative", damped = TRUE)
+  ets.model <- timeseries %>% ets(lambda = lambda )
+  arima.model <- timeseries %>% auto.arima(lambda = lambda, biasadj = TRUE)
+  
+  # forecast
+  pow.hwa.fcst <- forecast(hwa.model, h=12)
+  pow.hwm.fcst <- forecast(hwm.model, h=12)
+  pow.ets.fcst <- forecast(ets.model, h=12)
+  pow.arima.fcst <- forecast(arima.model, h=12)
+  
+  # plot forecasts
+  p1 <- autoplot(timeseries) + 
+    autolayer(pow.hwa.fcst, PI=FALSE, series="Holt-Winters Additive") + 
+    autolayer(pow.hwm.fcst, PI=FALSE, series="Holt-Winters Multiplicative") + 
+    autolayer(pow.ets.fcst, PI=FALSE, series="ETS") + 
+    autolayer(pow.arima.fcst, PI=FALSE, series="ARIMA") + 
+    theme(legend.position = "top") + 
+    ylab("Power Used") 
+  
+  # zoom in plot
+  p2 <- p1 + 
+    labs(title = "Zoom in ") + 
+    xlim(c(2012,2015))
+  
+  grid.arrange(p1,p2,ncol=1)
+
+}
+```
+
+
+
+
+```{r}
+powerts.lambda <- BoxCox.lambda(power.ts)
+power.ts.bc <- BoxCox(power.ts, powerts.lambda )
+ggtsdisplay(power.ts, main=paste("Residential Power Usage",round(powerts.lambda, 3)), ylab="Power Used", xlab="Month")
+
+```
+
+```{r}
+# Number of differences required for a stationary series
+ndiffs(power.ts.bc)
+```
+
+
+```{r}
+# Number of differences required for a seasonally stationary series
+nsdiffs(power.ts.bc)
+```
+
+
+It shows number of differences required is 1 for boxcox transformed data. 
+
+
+```{r}
+power.ts.bc %>% diff(lag=12) %>% ur.kpss() %>% summary()
+```
+
+
+We can see the test statistic small and well within the range we would expect for stationary data. So we can conclude that the data are stationary.
+
+
+```{r}
+power.ts.bc %>% 
+  diff(lag=12) %>% 
+  ggtsdisplay(main="Residential Power Usage", ylab="Power Used", xlab="Month")
+```
+
+
+
+```{r}
+# Holt Winters additive with damped True
+power.ts %>% hw(h=31, seasonal = "additive", lambda = powerts.lambda, damped = TRUE)
+```
+
+```{r}
+# Holt Winters multiplicative with damped True
+power.ts %>% hw(h=31, seasonal = "multiplicative", damped = TRUE)
+```
+
+
+```{r}
+power.ts %>% ets(lambda = powerts.lambda, biasadj = TRUE)
+```
+
+
+
+```{r}
+power.fit4 <- power.ts %>% auto.arima(lambda = powerts.lambda, biasadj = TRUE)
+power.fit4
+```
+
+
+```{r}
+checkresiduals(power.fit4)
+```
+
+```{r}
+power.forecast(power.ts)
+```
+
+
+
 
 # Part C - Waterflow Pipe
 
