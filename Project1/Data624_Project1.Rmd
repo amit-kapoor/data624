@@ -37,6 +37,8 @@ library(forecast)
 library(gridExtra)
 library(fpp2)
 library(urca)
+library(kableExtra)
+library(lubridate)
 ```
 
 
@@ -594,7 +596,7 @@ power.ts %>% summary()
 
 
 
-## Timeseries
+## Time Series
 
 
 ```{r}
@@ -792,7 +794,118 @@ download.file(url="https://github.com/amit-kapoor/data624/blob/main/Project1/Wat
               quiet = TRUE)
 
 pipe2.data <- read_excel(temp.file, skip=0, col_types = c("date","numeric"))
-head(pipe1.data)
+
 ```
+
+
+
+```{r}
+pipe1.data %>% 
+  kbl() %>% 
+  kable_paper() %>% 
+  scroll_box(width = "500px", height = "200px")
+```
+
+
+```{r}
+pipe2.data %>% 
+  kbl() %>% 
+  kable_paper() %>% 
+  scroll_box(width = "500px", height = "200px")
+```
+
+
+## Exploratory Analysis
+
+
+It is apparent here that the data is recorded on different time intervals for pipe1 and pipe2. For pipe1 it shows records for multiple time intervals within an hour i.e. not evenly distributed while for pipe2 it seems hourly recorded. We can check the daily frequency count below for both datasets to confirm this finding.
+
+
+```{r}
+p1 <- pipe1.data 
+p1$Date <- ymd_hms(p1$`Date Time`)
+p1$Date <- as.Date(p1$Date)
+
+p1 <- p1 %>% group_by(Date) %>% summarise("Pipe1 Records count"=n())
+
+p2 <- pipe2.data 
+p2$Date <- ymd_hms(p2$`Date Time`)
+p2$Date <- as.Date(p2$Date)
+
+p2 <- p2 %>% group_by(Date) %>% summarise("Pipe2 Records count"=n())
+
+merge(p1,p2,by="Date")
+```
+
+It is evident here that pipe1 dataset has an uneven count distribution for given date while pipe2 has even count daily.
+
+
+## Data Cleaning
+
+In this step we will make pipe1 data evenly distributed (per hour) for every day. We will take mean of records per hour and then recreate the `Date Time` column. Nest we will do the same count comparison that was done earlier and check number of records per day.
+
+
+
+```{r}
+pipe1.data <- pipe1.data %>% 
+  mutate(Date=date(`Date Time`), Hour=hour(`Date Time`)) %>% 
+  group_by(Date, Hour) %>% 
+  summarise(WaterFlow=mean(WaterFlow)) %>% 
+  ungroup() %>% 
+  mutate(`Date Time`=ymd_h(paste(Date, Hour))) %>% 
+  select(`Date Time`, WaterFlow)
+
+
+p1 <- pipe1.data 
+p1$Date <- ymd_hms(p1$`Date Time`)
+p1$Date <- as.Date(p1$Date)
+
+p1 <- p1 %>% group_by(Date) %>% summarise("Pipe1 Records count"=n())
+
+p2 <- pipe2.data 
+p2$Date <- ymd_hms(p2$`Date Time`)
+p2$Date <- as.Date(p2$Date)
+
+p2 <- p2 %>% group_by(Date) %>% summarise("Pipe2 Records count"=n())
+
+merge(p1,p2,by="Date")
+```
+
+
+## Time Series
+
+### Pipe1
+
+```{r}
+pipe1.ts <- ts(pipe1.data$WaterFlow)
+pipe1.ts %>% summary()
+```
+
+
+```{r}
+ggtsdisplay(pipe1.ts, main="Pipe1 Waterflow", ylab="Water")
+```
+
+
+
+
+
+### Pipe2
+
+```{r}
+pipe2.ts <- ts(pipe2.data$WaterFlow)
+pipe2.ts %>% summary()
+```
+
+
+
+```{r}
+ggtsdisplay(pipe2.ts, main="Pipe2 Waterflow", ylab="Water")
+```
+
+
+
+
+
 
 
