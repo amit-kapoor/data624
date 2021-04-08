@@ -874,6 +874,76 @@ merge(p1,p2,by="Date")
 
 ## Time Series
 
+
+```{r pipe-fcst}
+# function to plot forecast(s)
+pipe.forecast <- function(timeseries, pipe_num) {
+  # lambda value
+  lambda <- BoxCox.lambda(timeseries)
+  
+  # models for forecast
+  ets.model <- timeseries %>% ets(lambda = lambda)
+  arima.model <- timeseries %>% auto.arima(lambda = lambda)
+  
+  # forecast h=24*7=168
+  atm.ets.fcst <- forecast(ets.model, h=168)
+  atm.arima.fcst <- forecast(arima.model, h=168)
+  
+  # plot forecasts
+  p1 <- autoplot(timeseries) + 
+    autolayer(atm.ets.fcst, PI=FALSE, series="ETS") + 
+    autolayer(atm.arima.fcst, PI=FALSE, series="ARIMA") + 
+    theme(legend.position = "top") + 
+    ylab("Water") 
+  
+  # zoom in plot
+  if (pipe_num == 1) {
+    p2 <- p1 + 
+      labs(title = "Zoom in ") + 
+      xlim(c(225,325))
+  } else {
+    p2 <- p1 + 
+      labs(title = "Zoom in ") + 
+      xlim(c(990,1150))    
+  }
+  
+  
+  grid.arrange(p1,p2,ncol=1)
+
+}
+```
+
+
+```{r pipe-rmse}
+pipe_accuracy <- function(timeseries, time_break) {
+  # lambda value
+  lambda <- BoxCox.lambda(timeseries)
+  
+  # split the data to train and test
+  train <- window(timeseries, end=time_break)
+  test <- window(timeseries, start=time_break+1)
+  
+  # models for forecast
+  ets.model <- train %>% ets(model="ANN", lambda = lambda, biasadj = TRUE)
+  arima.model <- train %>% Arima(order=c(0,0,0), 
+                                 lambda = lambda,
+                                 biasadj = TRUE)
+  
+  # forecast
+  ets.frct = forecast(ets.model, h = length(test))$mean
+  arima.frct = forecast(arima.model, h = length(test))$mean
+  
+  # dataframe having rmse
+  rmse = data.frame(RMSE=cbind(accuracy(ets.frct, test)[,2],
+                              accuracy(arima.frct, test)[,2]))
+  names(rmse) = c("ETS", "ARIMA")
+  
+  # display rmse
+  rmse
+}
+```
+
+
 ### Pipe1
 
 ```{r}
@@ -886,6 +956,49 @@ pipe1.ts %>% summary()
 ggtsdisplay(pipe1.ts, main="Pipe1 Waterflow", ylab="Water")
 ```
 
+By seeing the time series, it is apparent there is no seasonality or trend in the data. The ACF and PACF plots shows white noise. It depicts that the time series is stationary and doesnt require diffencing.
+
+
+```{r}
+pipe1.lambda <- BoxCox.lambda(pipe1.ts)
+pipe1.ts.bc <- BoxCox(pipe1.ts, pipe1.lambda )
+ggtsdisplay(pipe1.ts.bc, main=paste("Pipe1 Waterflow",round(pipe1.lambda, 3)), ylab="Water")
+
+```
+
+
+```{r}
+# Number of differences required for a stationary series
+ndiffs(pipe1.ts.bc)
+```
+
+
+
+```{r}
+pipe1.ts.bc %>% ur.kpss() %>% summary()
+```
+
+
+
+```{r}
+pipe1.ts %>% ets(lambda = pipe1.lambda)
+```
+
+
+
+```{r}
+pipe1.ts %>% auto.arima(lambda = pipe1.lambda)
+```
+
+
+```{r}
+pipe.forecast(pipe1.ts, 1)
+```
+
+
+```{r}
+pipe_accuracy(pipe1.ts, 190)
+```
 
 
 
@@ -902,6 +1015,60 @@ pipe2.ts %>% summary()
 ```{r}
 ggtsdisplay(pipe2.ts, main="Pipe2 Waterflow", ylab="Water")
 ```
+
+
+```{r}
+pipe2.lambda <- BoxCox.lambda(pipe2.ts)
+pipe2.ts.bc <- BoxCox(pipe2.ts, pipe2.lambda )
+ggtsdisplay(pipe2.ts.bc, main=paste("Pipe2 Waterflow",round(pipe2.lambda, 3)), ylab="Water")
+
+```
+
+
+```{r}
+# Number of differences required for a stationary series
+ndiffs(pipe2.ts.bc)
+```
+
+
+
+```{r}
+pipe2.ts.bc %>% ur.kpss() %>% summary()
+```
+
+
+
+```{r}
+pipe2.ts %>% ets(lambda = pipe2.lambda)
+```
+
+
+
+```{r}
+pipe2.ts %>% auto.arima(lambda = pipe2.lambda)
+```
+
+
+```{r}
+pipe.forecast(pipe2.ts, 2)
+```
+
+
+```{r}
+pipe_accuracy(pipe2.ts, 900)
+```
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
