@@ -556,6 +556,8 @@ model_accuracy(atm4.ts,4)
 
 # Part B - Forecasting Power
 
+The dataset contains residential power usage for January 1998 until December 2013. Its monthly data from 1998 and power consumed is in KWH column.
+
 ```{r warning=FALSE}
 
 download.file(
@@ -570,6 +572,7 @@ head(power.data)
 
 ## Exploratory Analysis
 
+Seeing the plot closely, it is apparent that there is an outlier and a missing entry too.
 
 ```{r}
 power.data$`YYYY-MMM` <- paste0(power.data$`YYYY-MMM`,"-01")
