@@ -3,14 +3,14 @@ title: "Data624 - Project1"
 author: "Amit Kapoor"
 date: "3/28/2021"
 output:
+  pdf_document:
+    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
-  pdf_document:
-    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -39,6 +39,7 @@ library(fpp2)
 library(urca)
 library(kableExtra)
 library(lubridate)
+library(openxlsx)
 ```
 
 
@@ -783,6 +784,8 @@ powm_accuracy(power.ts)
 
 # Part C - Waterflow Pipe
 
+In part C we have been provided 2 datasets for waterflow pipes. These are simple 2 columns sets, however they have different time stamps. Each dataset contains 1000 records and has no missing data.
+
 ```{r warning=FALSE}
 
 download.file(url="https://github.com/amit-kapoor/data624/blob/main/Project1/Waterflow_Pipe1.xlsx?raw=true", 
@@ -800,6 +803,8 @@ pipe2.data <- read_excel(temp.file, skip=0, col_types = c("date","numeric"))
 
 ```
 
+
+It is apparent here that the data is recorded on different time intervals for pipe1 and pipe2. For pipe1 it shows records for multiple time intervals within an hour i.e. not evenly distributed while for pipe2 it seems hourly recorded. 
 
 
 ```{r}
@@ -821,7 +826,7 @@ pipe2.data %>%
 ## Exploratory Analysis
 
 
-It is apparent here that the data is recorded on different time intervals for pipe1 and pipe2. For pipe1 it shows records for multiple time intervals within an hour i.e. not evenly distributed while for pipe2 it seems hourly recorded. We can check the daily frequency count below for both datasets to confirm this finding.
+In this first step for analysis, We will check the daily frequency count for both datasets. It is apparent here that number of records daily for pipe1 is not evenly distributed and there are more recording per hour for pipe1. 
 
 
 ```{r}
@@ -845,7 +850,7 @@ It is evident here that pipe1 dataset has an uneven count distribution for given
 
 ## Data Cleaning
 
-In this step we will make pipe1 data evenly distributed (per hour) for every day. We will take mean of records per hour and then recreate the `Date Time` column. Nest we will do the same count comparison that was done earlier and check number of records per day.
+In this step we will make pipe1 data evenly distributed (per hour) for every day. As mentioned in the problem *for multiple recordings within an hour, take the mean*, we will take mean of records per hour and then recreate the `Date Time` column. Next we will do the same count comparison that was done earlier and check number of records per day.
 
 
 
@@ -858,7 +863,7 @@ pipe1.data <- pipe1.data %>%
   mutate(`Date Time`=ymd_h(paste(Date, Hour))) %>% 
   select(`Date Time`, WaterFlow)
 
-
+# check the number of records per hour daily
 p1 <- pipe1.data 
 p1$Date <- ymd_hms(p1$`Date Time`)
 p1$Date <- as.Date(p1$Date)
@@ -877,77 +882,12 @@ merge(p1,p2,by="Date")
 
 ## Time Series
 
-
-```{r pipe-fcst}
-# function to plot forecast(s)
-pipe.forecast <- function(timeseries, pipe_num) {
-  # lambda value
-  lambda <- BoxCox.lambda(timeseries)
-  
-  # models for forecast
-  ets.model <- timeseries %>% ets(lambda = lambda)
-  arima.model <- timeseries %>% auto.arima(lambda = lambda)
-  
-  # forecast h=24*7=168
-  atm.ets.fcst <- forecast(ets.model, h=168)
-  atm.arima.fcst <- forecast(arima.model, h=168)
-  
-  # plot forecasts
-  p1 <- autoplot(timeseries) + 
-    autolayer(atm.ets.fcst, PI=FALSE, series="ETS") + 
-    autolayer(atm.arima.fcst, PI=FALSE, series="ARIMA") + 
-    theme(legend.position = "top") + 
-    ylab("Water") 
-  
-  # zoom in plot
-  if (pipe_num == 1) {
-    p2 <- p1 + 
-      labs(title = "Zoom in ") + 
-      xlim(c(225,325))
-  } else {
-    p2 <- p1 + 
-      labs(title = "Zoom in ") + 
-      xlim(c(990,1150))    
-  }
-  
-  
-  grid.arrange(p1,p2,ncol=1)
-
-}
-```
-
-
-```{r pipe-rmse}
-pipe_accuracy <- function(timeseries, time_break) {
-  # lambda value
-  lambda <- BoxCox.lambda(timeseries)
-  
-  # split the data to train and test
-  train <- window(timeseries, end=time_break)
-  test <- window(timeseries, start=time_break+1)
-  
-  # models for forecast
-  ets.model <- train %>% ets(model="ANN", lambda = lambda, biasadj = TRUE)
-  arima.model <- train %>% Arima(order=c(0,0,0), 
-                                 lambda = lambda,
-                                 biasadj = TRUE)
-  
-  # forecast
-  ets.frct = forecast(ets.model, h = length(test))$mean
-  arima.frct = forecast(arima.model, h = length(test))$mean
-  
-  # dataframe having rmse
-  rmse = data.frame(RMSE=cbind(accuracy(ets.frct, test)[,2],
-                              accuracy(arima.frct, test)[,2]))
-  names(rmse) = c("ETS", "ARIMA")
-  
-  # display rmse
-  rmse
-}
-```
+In this section we will create the timeseries out of both datasets and check out the best model that will eventually provide a week forward forecast. 
 
 
 ### Pipe1
+
+We will start with pipe1 dataset by creating its time series, plot the waterflow data and check the trend and seasonality, if exist.
 
 ```{r}
 pipe1.ts <- ts(pipe1.data$WaterFlow)
@@ -981,32 +921,137 @@ ndiffs(pipe1.ts.bc)
 pipe1.ts.bc %>% ur.kpss() %>% summary()
 ```
 
-
+We can see the test statistic small and well within the range we would expect for stationary data. So we can conclude that the data are stationary.
 
 ```{r}
-pipe1.ts %>% ets(lambda = pipe1.lambda)
+# ets
+pipe1.ets.model <- pipe1.ts %>% ets(lambda = pipe1.lambda)
+pipe1.ets.model
 ```
 
+We can see here that the ets model that best describes the data is ETS(A,N,N) i.e. exponential smoothing with additive error, no trend and no seasonality.
 
+Next we will find the best Arima model that fits this time series data.
 
 ```{r}
-pipe1.ts %>% auto.arima(lambda = pipe1.lambda)
+# arima
+pipe1.arima.model <- pipe1.ts %>% auto.arima(lambda = pipe1.lambda)
+pipe1.arima.model
 ```
 
+The best Arima model comes out is ARIMA(0,0,0) with non-zero mean.
+
+
+Next is to plot the forecasts using both the models described above: ets and arima. For this, we will create a generic function which will accept the time series and pipe number and plot the forecast using both the models. 
+
+
+```{r pipe-fcst}
+# function to plot forecast(s)
+pipe.forecast <- function(timeseries, pipe_num) {
+  # lambda value
+  lambda <- BoxCox.lambda(timeseries)
+  
+  # models for forecast
+  ets.model <- timeseries %>% ets(lambda = lambda)
+  arima.model <- timeseries %>% auto.arima(lambda = lambda)
+  
+  # forecast h=24*7=168
+  pipe.ets.fcst <- forecast(ets.model, h=168)
+  #print(pipe.ets.fcst$mean)
+  pipe.arima.fcst <- forecast(arima.model, h=168)
+  #print(pipe.arima.fcst$mean)
+  
+  # plot forecasts
+  p1 <- autoplot(timeseries) + 
+    autolayer(pipe.ets.fcst, PI=FALSE, series="ETS") + 
+    autolayer(pipe.arima.fcst, PI=FALSE, series="ARIMA") + 
+    theme(legend.position = "top") + 
+    ylab("Water") 
+  
+  # zoom in plot
+  if (pipe_num == 1) {
+    p2 <- p1 + 
+      labs(title = "Zoom in ") + 
+      xlim(c(225,325))
+  } else {
+    p2 <- p1 + 
+      labs(title = "Zoom in ") + 
+      xlim(c(990,1150))    
+  }
+  
+  
+  grid.arrange(p1,p2,ncol=1)
+
+}
+```
+
+Lets plot the forecast for pipe1. The forecast is for every hour in a day for a week. 
 
 ```{r}
+pipe1.ets.fcst <- forecast(pipe1.ets.model, h=168)
+pipe1.arima.fcst <- forecast(pipe1.arima.model, h=168)
 pipe.forecast(pipe1.ts, 1)
 ```
 
+We can see that forecasts for both ETS and ARIMA models are almost on top of each other and for pipe1, the waterflow is forecasted to be 19.5548.
+
+Now we will check the accuracy of both the models ETS and ARIMA. Again for this purpose, we have created a function that accepts the timeseries and a timebreak (for train and test data). In this function we will first divide the data for training and testing, train both models with train set and then find out RMSE using test data.
+
+
+
+```{r pipe-rmse}
+pipe_accuracy <- function(timeseries, time_break) {
+  # lambda value
+  lambda <- BoxCox.lambda(timeseries)
+  
+  # split the data to train and test
+  train <- window(timeseries, end=time_break)
+  test <- window(timeseries, start=time_break+1)
+  
+  # models for forecast
+  ets.model <- train %>% ets(model="ANN", lambda = lambda, biasadj = TRUE)
+  arima.model <- train %>% Arima(order=c(0,0,0), 
+                                 lambda = lambda,
+                                 biasadj = TRUE)
+  
+  # forecast
+  ets.frct = forecast(ets.model, h = length(test))$mean
+  arima.frct = forecast(arima.model, h = length(test))$mean
+  
+  # dataframe having rmse
+  rmse = data.frame(RMSE=cbind(accuracy(ets.frct, test)[,2],
+                              accuracy(arima.frct, test)[,2]))
+  names(rmse) = c("ETS", "ARIMA")
+  
+  # display rmse
+  rmse
+}
+```
+
+
+By passing multiple time breaks for training and test data, we see below RMSEs.
 
 ```{r}
 pipe_accuracy(pipe1.ts, 190)
 ```
 
+```{r}
+pipe_accuracy(pipe1.ts, 178)
+```
 
+
+```{r}
+pipe_accuracy(pipe1.ts, 200)
+```
+
+
+It is evident here that the model best describes the pipe1 time series is **ETS(A,N,N) with Box-Cox transformation of 0.272**.
 
 
 ### Pipe2
+
+Similar to pipe1, we will create time series for pipe2, plot the waterflow data and check the trend and seasonality, if exist.
+
 
 ```{r}
 pipe2.ts <- ts(pipe2.data$WaterFlow)
@@ -1018,6 +1063,9 @@ pipe2.ts %>% summary()
 ```{r}
 ggtsdisplay(pipe2.ts, main="Pipe2 Waterflow", ylab="Water")
 ```
+
+
+By seeing the time series, it is apparent there is no seasonality or trend in the data. The ACF and PACF plots shows few significant auto correlations.
 
 
 ```{r}
@@ -1034,43 +1082,105 @@ ndiffs(pipe2.ts.bc)
 ```
 
 
-
 ```{r}
 pipe2.ts.bc %>% ur.kpss() %>% summary()
 ```
 
 
+We can see the test statistic small and well within the range we would expect for stationary data. So we can conclude that the data are stationary.
+
 
 ```{r}
-pipe2.ts %>% ets(lambda = pipe2.lambda)
+# ets
+pipe2.ets.model <- pipe2.ts %>% ets(lambda = pipe2.lambda)
+pipe2.ets.model
 ```
 
 
+We can see here that the ets model that best describes the data is ETS(A,N,N) i.e. exponential smoothing with additive error, no trend and no seasonality.
+
+Next we will find the best Arima model that fits this time series data.
+
 
 ```{r}
-pipe2.ts %>% auto.arima(lambda = pipe2.lambda)
+# arima
+pipe2.arima.model <- pipe2.ts %>% auto.arima(lambda = pipe2.lambda)
+pipe2.arima.model
 ```
 
 
+The best Arima model for pipe1 comes out is ARIMA(0,0,0) with non-zero mean, similar to pipe1. 
+
+Next we will see the forecast plots using both these models for pipe1. 
+
+
+
 ```{r}
+pipe2.ets.fcst <- forecast(pipe2.ets.model, h=168)
+pipe2.arima.fcst <- forecast(pipe2.arima.model, h=168)
 pipe.forecast(pipe2.ts, 2)
 ```
 
+Similar to pipe1, ee can see that forecasts in this case for both ETS and ARIMA models are almost on top of each other and for pipe2, the waterflow is forecasted to be 39.012.
+
+By passing multiple time breaks for training and test data, we see below RMSEs.
+
 
 ```{r}
-pipe_accuracy(pipe2.ts, 900)
+pipe_accuracy(pipe2.ts, 969)
+```
+
+
+```{r}
+pipe_accuracy(pipe2.ts, 850)
+```
+
+
+```{r}
+pipe_accuracy(pipe2.ts, 877)
+```
+
+It is evident here that the model best describes the pipe1 time series is ARIMA(0,0,0)  with Box-Cox transformation of 0.849.
+
+
+
+
+
+## Forecast a week forward
+
+Finally lets do the forecast for both pipes (pipe1 and pipe2) using the above selected best models and save the corresponding xlsx.
+
+
+```{r}
+pipe1.fcst.date = seq(ymd_hm('2015-11-01 24:00'), ymd_hm('2015-11-08 23:00'), by="hour")
+pipe2.fcst.date = seq(ymd_hm('2015-12-03 17:00'), ymd_hm('2015-12-10 16:00'), by="hour")
+
+write.xlsx(data.frame('DateTime' = pipe1.fcst.date, 'Waterflow'= pipe1.ets.fcst$mean), 
+           "Kapoor_data624_pipe1_forecasts.xlsx")
+
+write.xlsx(data.frame('DateTime' = pipe2.fcst.date, 'Waterflow'= pipe2.arima.fcst$mean), 
+           "Kapoor_data624_pipe2_forecasts.xlsx")
 ```
 
 
 
 
+```{r warning=FALSE}
+pipe1.fcst.ak <- read_excel("Kapoor_data624_pipe1_forecasts.xlsx", skip=0, col_types = c("date","numeric"))
+pipe1.fcst.ak %>% 
+  kbl() %>% 
+  kable_paper() %>% 
+  scroll_box(width = "500px", height = "200px")
+```
 
 
-
-
-
-
-
+```{r warning=FALSE}
+pipe2.fcst.ak <- read_excel("Kapoor_data624_pipe2_forecasts.xlsx", skip=0, col_types = c("date","numeric"))
+pipe2.fcst.ak %>% 
+  kbl() %>% 
+  kable_paper() %>% 
+  scroll_box(width = "500px", height = "200px")
+```
 
 
 
