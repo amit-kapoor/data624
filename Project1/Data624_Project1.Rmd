@@ -557,7 +557,9 @@ model_accuracy(atm4.ts,4)
 
 # Part B - Forecasting Power
 
-The dataset contains residential power usage for January 1998 until December 2013. Its monthly data from 1998 and power consumed is in KWH column.
+
+The dataset contains residential power usage for January 1998 until December 2013. Its monthly data from 1998 and power consumed is in KWH column. This dataset contains a total 192 records.
+
 
 ```{r warning=FALSE}
 
@@ -573,7 +575,9 @@ head(power.data)
 
 ## Exploratory Analysis
 
-Seeing the plot closely, it is apparent that there is an outlier and a missing entry too.
+
+Seeing the plot closely, it is apparent that there is an outlier and a missing entry too. We will use the tsclean function to take care of missing entry and outlier in the data. Other than this data seems to be good shape. 
+
 
 ```{r}
 power.data$`YYYY-MMM` <- paste0(power.data$`YYYY-MMM`,"-01")
@@ -586,11 +590,18 @@ ggplot(power.data, aes(x=Date, y=KWH )) +
 
 ## Data Cleaning
 
+We will first create the time series of given data and then perform tsclean function.
+
+
 ```{r}
 power.ts <- ts(power.data$KWH, start=c(1998, 1), frequency = 12)
 head(power.ts)
 ```
 
+
+```{r}
+power.ts %>% summary()
+```
 
 
 ```{r}
@@ -599,13 +610,20 @@ power.ts %>% summary()
 ```
 
 
+It is apparent that tsclean did take care of NA's and outlier in the data.
 
 ## Time Series
+
+
+So far we have analyzed the data and perform data cleaning to handle missing and outlier data. In this section we will delve into the time series and see the models that perform best for prediction.
 
 
 ```{r}
 ggtsdisplay(power.ts, main="Residential Power Usage", ylab="Power Used", xlab="Month")
 ```
+
+From the above time series plot, it is evident that seasonality exists in the data. We dont see a trend in the data. ACF plot sgows the auto correlation and PACF shows few significant lags in the beginning. Overall, it shows seasonality and non stationary data. It could require differencing to make it stationary which will be confirmed in further steps.
+
 
 
 ```{r}
@@ -613,14 +631,111 @@ ggsubseriesplot(power.ts, main="Pwer Usage Subseries Plot", ylab="Power Used")
 ```
 
 
+
 ```{r}
 ggseasonplot(power.ts, polar=TRUE, main="Power Usage Seasonal Plot", ylab="Power Used")
 ```
+
+The seasonal plots above shows a decline in power usage from Jan to May, increase till Aug and then decline in Nov. Aug is the month of most power consumption.
 
 
 ```{r}
 gglagplot(power.ts )
 ```
+
+In the above lagplot, colors show different month. The lines connect points in chronological order. The relationship is strongly positive at lag 12, reflecting the strong seasonality in the data.
+
+Next step is to apply Box-Cox transformation and check the transformed data.
+
+
+```{r}
+powerts.lambda <- BoxCox.lambda(power.ts)
+power.ts.bc <- BoxCox(power.ts, powerts.lambda )
+ggtsdisplay(power.ts, main=paste("Residential Power Usage",round(powerts.lambda, 3)), ylab="Power Used", xlab="Month")
+
+```
+
+The Box-Cox transformation above did handle the variation in the data with $\lambda$ as 0.144 and appears stable now. Next we see that Number of differences required for a stationary and seasonally stationary series are 1.
+
+
+
+```{r}
+# Number of differences required for a stationary series
+ndiffs(power.ts.bc)
+```
+
+
+```{r}
+# Number of differences required for a seasonally stationary series
+nsdiffs(power.ts.bc)
+```
+
+
+It shows number of differences required is 1 for boxcox transformed data. 
+
+
+```{r}
+power.ts.bc %>% diff(lag=12) %>% ur.kpss() %>% summary()
+```
+
+
+We can see the test statistic small and well within the range we would expect for stationary data. So we can conclude that the data are stationary.
+
+
+```{r}
+power.ts.bc %>% 
+  diff(lag=12) %>% 
+  ggtsdisplay(main="Residential Power Usage", ylab="Power Used", xlab="Month")
+```
+
+
+Now we will apply four models in this time series: Holt Winters additive with damped True, Holt Winters multiplicative with damped True, exponential smoothing and arima.  First we will start with Holt-Winters damped method. Damping is possible with both additive and multiplicative Holt-Winters’ methods. This method often provides accurate and robust forecasts for seasonal data is the Holt-Winters method with a damped trend.
+
+
+```{r}
+# Holt Winters additive with damped True
+power.ts %>% hw(h=31, seasonal = "additive", lambda = powerts.lambda, damped = TRUE)
+```
+
+
+
+```{r}
+# Holt Winters multiplicative with damped True
+power.ts %>% hw(h=31, seasonal = "multiplicative", damped = TRUE)
+```
+
+
+Next model to ETS: Exponential Smoothing methods.
+
+```{r}
+# exponential smoothing
+power.ts %>% ets(lambda = powerts.lambda, biasadj = TRUE)
+```
+
+
+We can see here that the ets model that best describes the data is **ETS(A,Ad,A)** i.e. exponential smoothing with additive error, additive damped trend and additive seasonality.
+
+Next we will find the best Arima model that fits this time series data.
+
+
+
+```{r}
+power.fit4 <- power.ts %>% auto.arima(lambda = powerts.lambda, biasadj = TRUE)
+power.fit4
+```
+
+
+The best Arima model comes out is **ARIMA(0,0,1)(2,1,0)[12]** with drift.
+
+
+
+```{r}
+checkresiduals(power.fit4)
+```
+
+
+
+Next is to plot the forecasts using all of 4 models described above: HW additive, HW multiplicative, ets and arima. For this, we will create a generic function which will accept the time series and plot the forecast for all these 4 models.  There is also a zoomed in plot of the forecast for better clarity.
 
 
 ```{r pow-fcst}
@@ -661,6 +776,18 @@ power.forecast <- function(timeseries) {
 }
 ```
 
+
+Lets plot the forecast now using the above function for power usage.
+
+
+
+```{r}
+power.arima.fcst <- forecast(power.fit4, h=12)
+power.forecast(power.ts)
+```
+
+
+Now we will check the accuracy of all 4 models. Again for this purpose, we have created a function that accepts the timeseries and divide the data for training and testing. In this function we will first divide the data for training and testing, train all models with train set and then find out RMSE using test data.
 
 
 ```{r rmse1}
@@ -704,81 +831,42 @@ powm_accuracy <- function(timeseries) {
 
 
 ```{r}
-powerts.lambda <- BoxCox.lambda(power.ts)
-power.ts.bc <- BoxCox(power.ts, powerts.lambda )
-ggtsdisplay(power.ts, main=paste("Residential Power Usage",round(powerts.lambda, 3)), ylab="Power Used", xlab="Month")
-
-```
-
-```{r}
-# Number of differences required for a stationary series
-ndiffs(power.ts.bc)
-```
-
-
-```{r}
-# Number of differences required for a seasonally stationary series
-nsdiffs(power.ts.bc)
-```
-
-
-It shows number of differences required is 1 for boxcox transformed data. 
-
-
-```{r}
-power.ts.bc %>% diff(lag=12) %>% ur.kpss() %>% summary()
-```
-
-
-We can see the test statistic small and well within the range we would expect for stationary data. So we can conclude that the data are stationary.
-
-
-```{r}
-power.ts.bc %>% 
-  diff(lag=12) %>% 
-  ggtsdisplay(main="Residential Power Usage", ylab="Power Used", xlab="Month")
-```
-
-
-
-```{r}
-# Holt Winters additive with damped True
-power.ts %>% hw(h=31, seasonal = "additive", lambda = powerts.lambda, damped = TRUE)
-```
-
-```{r}
-# Holt Winters multiplicative with damped True
-power.ts %>% hw(h=31, seasonal = "multiplicative", damped = TRUE)
-```
-
-
-```{r}
-power.ts %>% ets(lambda = powerts.lambda, biasadj = TRUE)
-```
-
-
-
-```{r}
-power.fit4 <- power.ts %>% auto.arima(lambda = powerts.lambda, biasadj = TRUE)
-power.fit4
-```
-
-
-```{r}
-checkresiduals(power.fit4)
-```
-
-```{r}
-power.forecast(power.ts)
-```
-
-
-
-```{r}
 powm_accuracy(power.ts)
 ```
 
+
+Thus **ARIMA(0,0,1)(2,1,0)[12]** with drift has been the best model to describe the gicen time series.
+
+
 ## Forecast 2014
+
+In this last step we will perform the forecast for 2014.
+
+
+```{r}
+pow.fcst.date <- seq(as.Date('2014-01-01'), as.Date('2014-12-01'), by="month") %>% format("%Y-%b")
+
+write.xlsx(data.frame('DateTime' = pow.fcst.date, 'Waterflow'= power.arima.fcst$mean), 
+           "Kapoor_data624_pow_forecasts.xlsx")
+
+```
+
+
+
+
+```{r warning=FALSE}
+pow.fcst.ak <- read_excel("Kapoor_data624_pow_forecasts.xlsx", skip=0, col_types = c("text","numeric"))
+pow.fcst.ak %>% 
+  kbl() %>% 
+  kable_paper() %>% 
+  scroll_box(width = "500px", height = "200px")
+```
+
+
+
+
+
+
 
 
 
@@ -1048,6 +1136,14 @@ pipe_accuracy(pipe1.ts, 200)
 It is evident here that the model best describes the pipe1 time series is **ETS(A,N,N) with Box-Cox transformation of 0.272**.
 
 
+
+```{r}
+checkresiduals(pipe1.ets.model)
+```
+
+
+
+
 ### Pipe2
 
 Similar to pipe1, we will create time series for pipe2, plot the waterflow data and check the trend and seasonality, if exist.
@@ -1143,6 +1239,9 @@ pipe_accuracy(pipe2.ts, 877)
 It is evident here that the model best describes the pipe1 time series is ARIMA(0,0,0)  with Box-Cox transformation of 0.849.
 
 
+```{r}
+checkresiduals(pipe2.arima.model)
+```
 
 
 
@@ -1152,8 +1251,8 @@ Finally lets do the forecast for both pipes (pipe1 and pipe2) using the above se
 
 
 ```{r}
-pipe1.fcst.date = seq(ymd_hm('2015-11-01 24:00'), ymd_hm('2015-11-08 23:00'), by="hour")
-pipe2.fcst.date = seq(ymd_hm('2015-12-03 17:00'), ymd_hm('2015-12-10 16:00'), by="hour")
+pipe1.fcst.date <- seq(ymd_hm('2015-11-01 24:00'), ymd_hm('2015-11-08 23:00'), by="hour")
+pipe2.fcst.date <- seq(ymd_hm('2015-12-03 17:00'), ymd_hm('2015-12-10 16:00'), by="hour")
 
 write.xlsx(data.frame('DateTime' = pipe1.fcst.date, 'Waterflow'= pipe1.ets.fcst$mean), 
            "Kapoor_data624_pipe1_forecasts.xlsx")
