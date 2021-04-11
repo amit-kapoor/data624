@@ -68,6 +68,7 @@ glimpse(atm.data)
 atm.data[!complete.cases(atm.data),]
 ```
 
+In the next set of plots, we will see the data distribution for all ATMs alongwith individual summaries.
 
 ```{r}
 ggplot(atm.data[complete.cases(atm.data),] , aes(x=DATE, y=Cash, col=ATM )) + 
@@ -150,90 +151,6 @@ Though above plot doesn't show much differences for ATM1,2,3 but tsclean handled
 
 ## Time Series
 
-
-Function to plot forecast for various models.
-
-```{r func-fcst}
-# function to plot forecast(s)
-atm.forecast <- function(timeseries) {
-  # lambda value
-  lambda <- BoxCox.lambda(timeseries)
-  # models for forecast
-  hw.model <- timeseries %>% hw(h=31, seasonal = "additive", lambda = lambda, damped = TRUE)
-  ets.model <- timeseries %>% ets(lambda = lambda)
-  arima.model <- timeseries %>% auto.arima(lambda = lambda)
-  # forecast
-  atm.hw.fcst <- forecast(hw.model, h=31)
-  atm.ets.fcst <- forecast(ets.model, h=31)
-  atm.arima.fcst <- forecast(arima.model, h=31)
-  # plot forecasts
-  p1 <- autoplot(timeseries) + 
-    autolayer(atm.hw.fcst, PI=FALSE, series="Holt-Winters") + 
-    autolayer(atm.ets.fcst, PI=FALSE, series="ETS") + 
-    autolayer(atm.arima.fcst, PI=FALSE, series="ARIMA") + 
-    theme(legend.position = "top") + 
-    ylab("Cash Withdrawl") 
-  # zoom in plot
-  p2 <- p1 + 
-    labs(title = "Zoom in ") + 
-    xlim(c(51,56))
-  
-  grid.arrange(p1,p2,ncol=1)
-
-}
-```
-
-
-Function to calculate RMSEs for various models.
-
-
-```{r rmse}
-model_accuracy <- function(timeseries, atm_num) {
-  # lambda value
-  lambda <- BoxCox.lambda(timeseries)
-  
-  # split the data to train and test
-  train <- window(timeseries, end=c(40, 3))
-  test <- window(timeseries, start=c(40, 4))
-  
-  # models for forecast
-  hw.model <- train %>% hw(h=length(train), seasonal = "additive", lambda = lambda, damped = TRUE)
-  ets.model <- train %>% ets(model='ANA', lambda = lambda)
-  
-  # Arima model
-  if (atm_num == 1) {
-    # for ATM1
-    arima.model <- train %>% Arima(order=c(0,0,2), 
-                                        seasonal = c(0,1,1), 
-                                        lambda = lambda)
-  } else if(atm_num == 2) {
-    # for ATM2
-    arima.model <- train %>% Arima(order=c(3,0,3), 
-                                        seasonal = c(0,1,1), 
-                                        include.drift = TRUE, 
-                                        lambda = lambda,
-                                        biasadj = TRUE)
-  } else {
-    # for ATM4
-    arima.model <- train %>% Arima(order=c(0,0,1), 
-                                    seasonal = c(2,0,0), 
-                                    lambda = lambda)
-  }
-  
-  # forecast
-  hw.frct = forecast(hw.model, h = length(test))$mean
-  ets.frct = forecast(ets.model, h = length(test))$mean
-  arima.frct = forecast(arima.model, h = length(test))$mean
-  
-  # dataframe having rmse
-  rmse = data.frame(RMSE=cbind(accuracy(hw.frct, test)[,2],
-                                   accuracy(ets.frct, test)[,2],
-                                   accuracy(arima.frct, test)[,2]))
-  names(rmse) = c("Holt-Winters", "ETS", "ARIMA")
-  # display rmse
-  rmse
-}
-```
 
 
 ### ATM1
@@ -324,12 +241,97 @@ Next is to see residuals time series plot which shows residuals are being near n
 checkresiduals(atm1.fit3)
 ```
 
-Let's plot the forecast for all the considered models above which will shows a nice visual comparison. it will also show a zoomed in plot to have a clearer view.
+Let's plot the forecast for all the considered models above which will shows a nice visual comparison. it will also show a zoomed in plot to have a clearer view. For this, we will create a generic function which will accept the time series and plot the forecast using all the models.
+
+```{r func-fcst}
+# function to plot forecast(s)
+atm.forecast <- function(timeseries) {
+  # lambda value
+  lambda <- BoxCox.lambda(timeseries)
+  # models for forecast
+  hw.model <- timeseries %>% hw(h=31, seasonal = "additive", lambda = lambda, damped = TRUE)
+  ets.model <- timeseries %>% ets(lambda = lambda)
+  arima.model <- timeseries %>% auto.arima(lambda = lambda)
+  # forecast
+  atm.hw.fcst <- forecast(hw.model, h=31)
+  atm.ets.fcst <- forecast(ets.model, h=31)
+  atm.arima.fcst <- forecast(arima.model, h=31)
+  # plot forecasts
+  p1 <- autoplot(timeseries) + 
+    autolayer(atm.hw.fcst, PI=FALSE, series="Holt-Winters") + 
+    autolayer(atm.ets.fcst, PI=FALSE, series="ETS") + 
+    autolayer(atm.arima.fcst, PI=FALSE, series="ARIMA") + 
+    theme(legend.position = "top") + 
+    ylab("Cash Withdrawl") 
+  # zoom in plot
+  p2 <- p1 + 
+    labs(title = "Zoom in ") + 
+    xlim(c(51,56))
+  
+  grid.arrange(p1,p2,ncol=1)
+
+}
+```
+
+
 
 
 ```{r}
+atm1.arima.fcst <- forecast(atm1.fit3, h=31)
 atm.forecast(atm1.ts)
 ```
+
+Now we will check the accuracy of all the models considered above. Again for this purpose, we have created a function that accepts the timeseries and atm num. In this function we will first divide the data for training and testing, train all  models with train set and then find out RMSE using test data. 
+
+
+```{r rmse}
+model_accuracy <- function(timeseries, atm_num) {
+  # lambda value
+  lambda <- BoxCox.lambda(timeseries)
+  
+  # split the data to train and test
+  train <- window(timeseries, end=c(40, 3))
+  test <- window(timeseries, start=c(40, 4))
+  
+  # models for forecast
+  hw.model <- train %>% hw(h=length(train), seasonal = "additive", lambda = lambda, damped = TRUE)
+  ets.model <- train %>% ets(model='ANA', lambda = lambda)
+  
+  # Arima model
+  if (atm_num == 1) {
+    # for ATM1
+    arima.model <- train %>% Arima(order=c(0,0,2), 
+                                        seasonal = c(0,1,1), 
+                                        lambda = lambda)
+  } else if(atm_num == 2) {
+    # for ATM2
+    arima.model <- train %>% Arima(order=c(3,0,3), 
+                                        seasonal = c(0,1,1), 
+                                        include.drift = TRUE, 
+                                        lambda = lambda,
+                                        biasadj = TRUE)
+  } else {
+    # for ATM4
+    arima.model <- train %>% Arima(order=c(0,0,1), 
+                                    seasonal = c(2,0,0), 
+                                    lambda = lambda)
+  }
+  
+  # forecast
+  hw.frct = forecast(hw.model, h = length(test))$mean
+  ets.frct = forecast(ets.model, h = length(test))$mean
+  arima.frct = forecast(arima.model, h = length(test))$mean
+  
+  # dataframe having rmse
+  rmse = data.frame(RMSE=cbind(accuracy(hw.frct, test)[,2],
+                                   accuracy(ets.frct, test)[,2],
+                                   accuracy(arima.frct, test)[,2]))
+  names(rmse) = c("Holt-Winters", "ETS", "ARIMA")
+  # display rmse
+  rmse
+}
+```
+
 
 
 
@@ -429,6 +431,7 @@ Next step is to plot the forecast for all the considered models above which will
 
 
 ```{r}
+atm2.arima.fcst <- forecast(atm2.fit3, h=31)
 atm.forecast(atm2.ts)
 ```
 
@@ -446,6 +449,16 @@ atm3.ts <- atm.new %>% filter(ATM=="ATM3") %>% select(Cash) %>% ts(frequency = 7
 autoplot(atm3.ts, main="ATM3 Cash Withdrawal", ylab="cash withdrawal", xlab="week")
 ```
 
+As described and evident above, we only have 3 observations for ATM3 and only these observations will be used for the forecast. Thus, a **Simple mean forecast** will be used for ATM3.
+
+
+
+```{r}
+# ATM3 forecast
+atm3.fcst <- meanf(window(atm3.ts, start=c(52,6)), h=31)
+autoplot(atm3.ts) + 
+  autolayer(atm3.fcst, PI=FALSE)
+```
 
 
 
@@ -541,6 +554,7 @@ checkresiduals(atm4.fit3)
 Next is to plot the forecast for all the considered models above which will shows a nice visual comparison. it will also show a zoomed in plot to have a clearer view.
 
 ```{r}
+atm4.arima.fcst <- forecast(atm4.fit3, h=31)
 atm.forecast(atm4.ts)
 ```
 
@@ -552,6 +566,38 @@ model_accuracy(atm4.ts,4)
 ```
 
 ## Forecast May, 2010
+
+Finally we will do forecast for May 2010 for all 4 ATMs and save it in an excel. Here are the best fit models for cash withdrawls forecast of all 4 ATMs.
+
+* ATM1 - ARIMA(0,0,2)(0,1,1)[7] with Box-Cox transformation 0.262
+* ATM2 - ARIMA(3,0,3)(0,1,1)[7] with drift and Box-Cox transformation 0.724
+* ATM3 - Simple Mean Forecast
+* ATM4 - ARIMA(0,0,1)(2,0,0)[7] with non-zero mean and Box-Cox transformation 0.45
+
+
+```{r}
+Date <- seq(as.Date('2010-05-01'), as.Date('2010-05-31'), by="day") 
+ATM <- c(rep('ATM1',31),rep('ATM2',31),rep('ATM3',31),rep('ATM4',31))
+Cash=c(atm1.arima.fcst$mean, atm2.arima.fcst$mean, atm3.fcst$mean,atm4.arima.fcst$mean)
+
+write.xlsx(data.frame(Date, ATM, Cash), 
+           "Kapoor_data624_atm_forecasts.xlsx")
+
+```
+
+
+
+
+```{r warning=FALSE}
+pow.fcst.ak <- read_excel("Kapoor_data624_atm_forecasts.xlsx", skip=0, col_types = c("date","text","numeric"))
+pow.fcst.ak %>% 
+  kbl() %>% 
+  kable_paper() %>% 
+  scroll_box(width = "500px", height = "200px")
+```
+
+
+
 
 
 
@@ -842,6 +888,7 @@ Thus **ARIMA(0,0,1)(2,1,0)[12]** with drift has been the best model to describe 
 
 In this last step we will perform the forecast for 2014.
 
+* Power Usage - ARIMA(0,0,1)(2,1,0)[12] with drift and Box-Cox transformation -0.144
 
 ```{r}
 pow.fcst.date <- seq(as.Date('2014-01-01'), as.Date('2014-12-01'), by="month") %>% format("%Y-%b")
@@ -1236,7 +1283,7 @@ pipe_accuracy(pipe2.ts, 850)
 pipe_accuracy(pipe2.ts, 877)
 ```
 
-It is evident here that the model best describes the pipe1 time series is ARIMA(0,0,0)  with Box-Cox transformation of 0.849.
+It is evident here that the model best describes the pipe2 time series is ARIMA(0,0,0)  with Box-Cox transformation of 0.849.
 
 
 ```{r}
@@ -1248,6 +1295,9 @@ checkresiduals(pipe2.arima.model)
 ## Forecast a week forward
 
 Finally lets do the forecast for both pipes (pipe1 and pipe2) using the above selected best models and save the corresponding xlsx.
+
+* Pipe1 - ETS(A,N,N) with Box-Cox transformation of 0.272
+* Pipe2 - ARIMA(0,0,0) with Box-Cox transformation of 0.849
 
 
 ```{r}
