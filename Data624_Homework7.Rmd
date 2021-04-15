@@ -17,6 +17,15 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+
+```{r}
+library(AppliedPredictiveModeling)
+library(psych)
+library(tidyverse)
+```
+
+
+
 # Exercise 6.2
 Developing a model to predict permeability (see Sect. 1.4) could save significant resources for a pharmaceutical company, while at the same time more rapidly identifying molecules that have a sufficient permeability to become a drug:
 
@@ -24,6 +33,40 @@ Developing a model to predict permeability (see Sect. 1.4) could save significan
 Start R and use these commands to load the data.
 
 The matrix fingerprints contains the 1,107 binary molecular predictors for the 165 compounds, while `permeability` contains permeability response.
+
+
+```{r}
+data(permeability)
+```
+
+
+
+```{r}
+glimpse(permeability)
+```
+
+```{r}
+nrow(permeability)
+```
+
+```{r}
+glimpse(fingerprints)
+```
+
+
+```{r}
+ncol(fingerprints)
+```
+
+
+```{r}
+nrow(fingerprints)
+```
+
+
+In this data there were 165 unique compounds; 1107 molecular fingerprints were determined for each. A molecular fingerprint is a binary sequence of numbers that represents the presence or absence of a specific molecular sub-structure. The response is highly skewed, the predictors are sparse (15.5 percent are present), and many predictors are strongly associated
+
+
 
 
 ## (b)
