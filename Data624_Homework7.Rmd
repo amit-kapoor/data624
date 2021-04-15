@@ -18,10 +18,13 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-```{r}
+```{r,warning=FALSE,message=FALSE}
+
 library(AppliedPredictiveModeling)
-library(psych)
 library(tidyverse)
+library(caret)
+
+
 ```
 
 
@@ -73,8 +76,78 @@ In this data there were 165 unique compounds; 1107 molecular fingerprints were d
 The fingerprint predictors indicate the presence or absence of substructures of a molecule and are often sparse meaning that relatively few of the molecules contain each substructure. Filter out the predictors that have low frequencies using the `nearZeroVar` function from the caret package. How many predictors are left for modeling?
 
 
+```{r}
+remove.features <- nearZeroVar(fingerprints)
+X <- fingerprints[,-remove.features]
+length(remove.features) %>% paste('columns are removed. ', dim(X)[2], ' predictors are left for modeling.') %>% print()
+```
+
+
+We will now look into pairwise correlation above 0.90. We will then remove the predictors having correlation with cutoff 0.90.
+
+
+```{r}
+plot(cor(X))
+```
+
+
+```{r}
+corr.90 <- findCorrelation(cor(X), cutoff=0.90)
+X <- X[,-corr.90]
+length(corr.90) %>% paste('columns having correlation 0.90 or more are removed. ', dim(X)[2], ' predictors are left for modeling.') %>% print()
+```
+
+
+
+
+
 ## (c)
 Split the data into a training and a test set, pre-process the data, and tune a PLS model. How many latent variables are optimal and what is the corresponding resampled estimate of $R^2$?
+
+
+```{r}
+set.seed(786)
+partition <- createDataPartition(permeability, p=0.70, list = FALSE)
+
+# predictor
+X.train <- X[partition,]
+X.test <- X[-partition,]
+
+# response 
+y.train <- permeability[partition,]
+y.test <- permeability[-partition,]
+
+# tune pls model 
+pls.fit <- train(x=X.train,
+                 y=y.train,
+                 method="pls",
+                 metric="Rsquared",
+                 tuneLength=15, 
+                 trControl=trainControl(method = "cv", verboseIter = TRUE),
+                 preProcess=c("center", "scale"), 
+                 verbose=TRUE
+                 )
+
+pls.fit
+```
+
+
+
+```{r}
+# plot R-squared vs components
+plot(pls.fit)
+```
+
+
+```{r}
+pls.fit$results %>% 
+  filter(ncomp == pls.fit$bestTune$ncomp) %>% 
+  select(ncomp,RMSE,Rsquared)
+```
+
+
+After applying partial least square model, we see now that number of components 2 produces minimum RMSE (11.19413) and max $R^2$ (0.476142).
+
 
 
 ## (d)
