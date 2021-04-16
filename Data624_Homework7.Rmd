@@ -3,14 +3,14 @@ title: "Data624 - Homework7"
 author: "Amit Kapoor"
 date: "3/28/2021"
 output:
-  pdf_document:
-    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
+  pdf_document:
+    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -124,8 +124,7 @@ pls.fit <- train(x=X.train,
                  metric="Rsquared",
                  tuneLength=15, 
                  trControl=trainControl(method = "cv", verboseIter = TRUE),
-                 preProcess=c("center", "scale"), 
-                 verbose=TRUE
+                 preProcess=c("center", "scale")
                  )
 
 pls.fit
@@ -154,9 +153,144 @@ After applying partial least square model, we see now that number of components 
 Predict the response for the test set. What is the test set estimate of $R^2$?
 
 
+```{r}
+# Prediction from pls model
+pls.prediction <- predict(pls.fit, X.test)
+postResample(pred=pls.prediction, obs=y.test)
+```
+
+
+```{r}
+# plot
+plot(pls.prediction, y.test, 
+     main="Observed vs Predicted Permeability from PLS model (n=2)",
+     xlab="Predicted Permeability",
+     ylab="Observed Permeability")
+abline(0,1,col="red")
+```
+
+The plot shows the predicted vs observed permeability. The performance shows that the model fits the test data with RMSE as 12.464 and handles 48% of variability of data.
+
 
 ## (e)
 Try building other models discussed in this chapter. Do any have better predictive performance?
+
+
+
+
+
+```{r ridge}
+set.seed(786)
+# tune ridge model 
+ridge.fit <- train(x=X.train,
+                 y=y.train,
+                 method="ridge",
+                 metric="Rsquared",
+                 tuneGrid = data.frame(lambda=seq(0,1,by=0.1)),
+                 trControl=trainControl(method = "cv"),
+                 preProcess=c("center", "scale")
+                 )
+
+ridge.fit
+```
+
+
+
+```{r}
+ridge.fit$bestTune
+```
+
+
+
+
+```{r}
+plot(ridge.fit)
+```
+
+
+
+```{r lasso}
+set.seed(786)
+# tune lasso model 
+lasso.fit <- train(x=X.train, 
+                   y=y.train,
+                   method="lasso",
+                   metric="Rsquared",
+                   tuneGrid = data.frame(fraction=seq(0,1,by=0.05)),
+                   trControl=trainControl(method = "cv"),
+                   preProcess=c("center", "scale")
+                 )
+
+lasso.fit
+```
+
+
+```{r}
+lasso.fit$bestTune
+```
+
+
+
+```{r}
+plot(lasso.fit)
+```
+
+
+
+
+```{r elas-net}
+set.seed(786)
+# tune enet model 
+enet.fit <- train(x=X.train,
+                  y=y.train,
+                  method="enet",
+                  metric="Rsquared",
+                  tuneGrid = expand.grid(fraction=seq(0,1,by=0.05), lambda=seq(0,1,by=0.1)),
+                  trControl=trainControl(method = "cv"),
+                  preProcess=c("center", "scale")
+                 )
+
+enet.fit
+```
+
+
+```{r}
+enet.fit$bestTune
+```
+
+
+
+```{r}
+plot(enet.fit)
+```
+
+
+```{r}
+set.seed(786)
+summary(resamples(list(PLS=pls.fit, Ridge=ridge.fit, Lasso=lasso.fit, Elasticnet=enet.fit)))
+```
+
+
+
+```{r}
+accuracy <- function(models, predictor, response) {
+  ac <- list()
+  i <- 1
+  for (m in models) {
+    prediction <- predict(m, newdata = predictor)
+    ac[[i]] <- postResample(pred=prediction, obs = response)
+    i <- i+1
+  }
+  names(ac) <- c("pls","ridge","lasso","enet")
+  return(ac)
+}
+
+models <- list(pls.fit, ridge.fit, lasso.fit, enet.fit)
+accuracy(models, X.test, y.test)
+```
+
+
+Seeing the results above, we can conclude that elastic net predicted the test set with best accuracy having RMSE = 11.62 and $R^2$ = 0.56
 
 
 ## (f)
