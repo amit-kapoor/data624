@@ -23,7 +23,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(AppliedPredictiveModeling)
 library(tidyverse)
 library(caret)
-
+library(naniar)
 
 ```
 
@@ -122,7 +122,7 @@ pls.fit <- train(x=X.train,
                  y=y.train,
                  method="pls",
                  metric="Rsquared",
-                 tuneLength=15, 
+                 tuneLength=10, 
                  trControl=trainControl(method = "cv", verboseIter = TRUE),
                  preProcess=c("center", "scale")
                  )
@@ -320,6 +320,15 @@ A chemical manufacturing process for a pharmaceutical product was discussed in S
 Start R and use these commands to load the data:
 
 
+```{r}
+data(ChemicalManufacturingProcess)
+```
+
+
+```{r}
+glimpse(ChemicalManufacturingProcess)
+```
+
 
 
 The matrix `processPredictors` contains the 57 predictors (12 describing the input biological material and 45 describing the process predictors) for the 176 manufacturing runs. yield contains the percent yield for each run.
@@ -329,17 +338,119 @@ The matrix `processPredictors` contains the 57 predictors (12 describing the inp
 A small percentage of cells in the predictor set contain missing values. Use an imputation function to fill in these missing values (e.g., see Sect. 3.8).
 
 
+```{r}
+# columns having missing values
+colnames(ChemicalManufacturingProcess)[!complete.cases(t(ChemicalManufacturingProcess))]
+```
+
+
+So there are 28 columns having missing values.
+
+
+```{r fig1, fig.height=10, fig.width=10}
+gg_miss_var(ChemicalManufacturingProcess[,-c(1)]) + labs(y = "Sorted by Missing values")
+```
+
+We will next use preProcess() method to impute the missing values using knnImpute (K nearest neighbor).
+
+```{r}
+pre.proc <- preProcess(ChemicalManufacturingProcess[,c(-1)], method = "knnImpute")
+chem_df <- predict(pre.proc, ChemicalManufacturingProcess[,c(-1)])
+```
+
+
+```{r fig2}
+# columns having missing values
+colnames(chem_df)[!complete.cases(t(chem_df))]
+```
 
 ## (c) 
 Split the data into a training and a test set, pre-process the data, and tune a model of your choice from this chapter. What is the optimal value of the performance metric?
+
+We will first look into pairwise correlation above 0.90 and remove the predictors having correlation with cutoff 0.90.
+
+
+```{r}
+chem.remove.pred <- nearZeroVar(chem_df)
+chem_df <- chem_df[,-chem.remove.pred]
+length(chem.remove.pred) %>% paste('columns are removed. ', dim(chem_df)[2], ' predictors are left for modeling.') %>% print()
+```
+
+
+
+```{r}
+chem.corr.90 <- findCorrelation(cor(chem_df), cutoff=0.90)
+chem_df <- chem_df[,-chem.corr.90]
+length(chem.corr.90) %>% paste('columns having correlation 0.90 or more are removed. ', dim(chem_df)[2], ' predictors are left for modeling.') %>% print()
+```
+
+
+```{r}
+set.seed(786)
+chem.part <- createDataPartition(ChemicalManufacturingProcess$Yield, p=0.80, list = FALSE)
+
+# predictor
+X.train <- chem_df[chem.part,]
+X.test <- chem_df[-chem.part,]
+
+# response 
+y.train <- ChemicalManufacturingProcess$Yield[chem.part]
+y.test <- ChemicalManufacturingProcess$Yield[-chem.part]
+
+# tune pls model 
+chem.enet.fit <- train(x=X.train,
+                 y=y.train,
+                 method="enet",
+                 metric="Rsquared",
+                 tuneGrid = expand.grid(fraction=seq(0,1,by=0.1), lambda=seq(0,1,by=0.1)),
+                 trControl=trainControl(method = "cv",number=10),
+                 preProcess=c("YeoJohnson","center", "scale")
+                 )
+
+chem.enet.fit
+```
+
+
+
+```{r}
+chem.enet.fit$bestTune
+```
+
+
+```{r}
+plot(chem.enet.fit)
+```
+
+
+```{r}
+set.seed(786)
+data.frame(RSquared=chem.enet.fit[["results"]][["Rsquared"]][as.numeric(rownames(chem.enet.fit$bestTune))],
+           RMSE=chem.enet.fit[["results"]][["RMSE"]][as.numeric(rownames(chem.enet.fit$bestTune))]) 
+```
+
 
 
 ## (d) 
 Predict the response for the test set.What is the value of the performance metric and how does this compare with the resampled performance metric on the training set?
 
 
+```{r}
+enet.pred <- predict(chem.enet.fit, newdata = X.test)
+(pred.result <- postResample(pred = enet.pred, obs=y.test))
+```
+
+
+
+
+
+
 ## (e) 
 Which predictors are most important in the model you have trained? Do either the biological or process predictors dominate the list?
+
+
+```{r}
+varImp(chem.enet.fit)
+```
 
 
 ## (f) 
