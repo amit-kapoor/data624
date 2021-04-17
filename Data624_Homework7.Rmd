@@ -175,9 +175,13 @@ The plot shows the predicted vs observed permeability. The performance shows tha
 ## (e)
 Try building other models discussed in this chapter. Do any have better predictive performance?
 
+We will try to fit below 3 penalized models and compare the performance against the PLS model:
 
+* Ridge regression: param tuned would be $\lambda$ (0 to 1 by 0.1)
+* Lasso regression: param tuned would be fraction (0 to 0.5 by 0.05)
+* Elastic net: param tuned would be fraction and $\lambda$ (0 to 1 by 0.1)
 
-
+We will set the same seed for all the model. $R^2$ matrix will be used for all the models evaluation.
 
 ```{r ridge}
 set.seed(786)
@@ -187,7 +191,7 @@ ridge.fit <- train(x=X.train,
                  method="ridge",
                  metric="Rsquared",
                  tuneGrid = data.frame(lambda=seq(0,1,by=0.1)),
-                 trControl=trainControl(method = "cv"),
+                 trControl=trainControl(method = "cv",number=10),
                  preProcess=c("center", "scale")
                  )
 
@@ -209,15 +213,15 @@ plot(ridge.fit)
 
 
 
-```{r lasso}
+```{r lasso, warning=FALSE}
 set.seed(786)
 # tune lasso model 
 lasso.fit <- train(x=X.train, 
                    y=y.train,
                    method="lasso",
                    metric="Rsquared",
-                   tuneGrid = data.frame(fraction=seq(0,1,by=0.05)),
-                   trControl=trainControl(method = "cv"),
+                   tuneGrid = data.frame(fraction=seq(0,0.5,by=0.05)),
+                   trControl=trainControl(method = "cv",number=10),
                    preProcess=c("center", "scale")
                  )
 
@@ -238,15 +242,15 @@ plot(lasso.fit)
 
 
 
-```{r elas-net}
+```{r elas-net, warning=FALSE}
 set.seed(786)
 # tune enet model 
 enet.fit <- train(x=X.train,
                   y=y.train,
                   method="enet",
                   metric="Rsquared",
-                  tuneGrid = expand.grid(fraction=seq(0,1,by=0.05), lambda=seq(0,1,by=0.1)),
-                  trControl=trainControl(method = "cv"),
+                  tuneGrid = expand.grid(fraction=seq(0,1,by=0.1), lambda=seq(0,1,by=0.1)),
+                  trControl=trainControl(method = "cv",number=10),
                   preProcess=c("center", "scale")
                  )
 
@@ -289,12 +293,20 @@ models <- list(pls.fit, ridge.fit, lasso.fit, enet.fit)
 accuracy(models, X.test, y.test)
 ```
 
-
-Seeing the results above, we can conclude that elastic net predicted the test set with best accuracy having RMSE = 11.62 and $R^2$ = 0.56
+The test set evaluation seems to show Ridge model is best with $R^2$=0.59 but the cross validation earlier showed the best model as elastic net. I would prefer to go with cross validation as it is closer to true distribution. With this explanation, we can conclude that elastic net predicted the test set with best accuracy having RMSE = 11.62 and $R^2$ = 0.56
 
 
 ## (f)
 Would you recommend any of your models to replace the permeability laboratory experiment?
+
+I would not recommend any of the models described above to replace the permeability laboratory experiment. The MAE of all the models are roughly between 8 and 10 that means model predictions of on avg 8 to 10 off. If we look at the permiability histogram most of the values are under 10 so models accuracies are not good enough to replace lab test.
+
+
+```{r}
+hist(permeability)
+```
+
+
 
 
 
