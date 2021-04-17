@@ -24,7 +24,7 @@ library(AppliedPredictiveModeling)
 library(tidyverse)
 library(caret)
 library(naniar)
-
+library(corrplot)
 ```
 
 
@@ -387,7 +387,12 @@ length(chem.corr.90) %>% paste('columns having correlation 0.90 or more are remo
 
 ```{r}
 set.seed(786)
-chem.part <- createDataPartition(ChemicalManufacturingProcess$Yield, p=0.80, list = FALSE)
+
+pre.proc <- preProcess(chem_df, method = c("center", "scale"))
+chem_df <- predict(pre.proc, chem_df)
+
+# partition
+chem.part <- createDataPartition(ChemicalManufacturingProcess$Yield, p=0.70, list = FALSE)
 
 # predictor
 X.train <- chem_df[chem.part,]
@@ -397,15 +402,15 @@ X.test <- chem_df[-chem.part,]
 y.train <- ChemicalManufacturingProcess$Yield[chem.part]
 y.test <- ChemicalManufacturingProcess$Yield[-chem.part]
 
-# tune pls model 
-chem.enet.fit <- train(x=X.train,
-                 y=y.train,
-                 method="enet",
-                 metric="Rsquared",
-                 tuneGrid = expand.grid(fraction=seq(0,1,by=0.1), lambda=seq(0,1,by=0.1)),
-                 trControl=trainControl(method = "cv",number=10),
-                 preProcess=c("YeoJohnson","center", "scale")
+# tune elastic net model 
+chem.enet.fit <- train(x=X.train, 
+                       y=y.train,
+                       method="glmnet",
+                       metric="Rsquared",
+                       trControl=trainControl(method = "cv",number=5),
+                       tuneLength = 5
                  )
+
 
 chem.enet.fit
 ```
@@ -434,6 +439,10 @@ data.frame(RSquared=chem.enet.fit[["results"]][["Rsquared"]][as.numeric(rownames
 Predict the response for the test set.What is the value of the performance metric and how does this compare with the resampled performance metric on the training set?
 
 
+
+
+
+
 ```{r}
 enet.pred <- predict(chem.enet.fit, newdata = X.test)
 (pred.result <- postResample(pred = enet.pred, obs=y.test))
@@ -448,8 +457,18 @@ enet.pred <- predict(chem.enet.fit, newdata = X.test)
 Which predictors are most important in the model you have trained? Do either the biological or process predictors dominate the list?
 
 
+`caret:varImp` calculation of variable importance for regression and classification models, is generic method for calculating variable importance for objects produced by train and method specific methods. The number returned is a relative measure of variable importance.
+
+We can see here that the most contribution predictor is ManufacturingProcess32 and we can conclude that Manufacturing process predictors dominate the list. 
+
 ```{r}
 varImp(chem.enet.fit)
+```
+
+
+
+```{r}
+plot(varImp(chem.enet.fit), top=20)
 ```
 
 
@@ -457,15 +476,30 @@ varImp(chem.enet.fit)
 Explore the relationships between each of the top predictors and the response. How could this information be helpful in improving yield in future runs of the manufacturing process?
 
 
+```{r}
+coeffs = coef(chem.enet.fit$finalModel, chem.enet.fit$bestTune$lambda)
+(coeffs.df = data.frame(cbind(variables = coeffs@Dimnames[[1]][coeffs@i+1], coef = coeffs@x)))
+```
+
+```{r}
+coeffs.df[coeffs.df$coef>0,]
+```
 
 
 
+```{r}
+coeffs.df[coeffs.df$coef<0,]
+```
 
 
+```{r}
+cor(ChemicalManufacturingProcess$Yield, ChemicalManufacturingProcess$ManufacturingProcess32)
+```
 
 
-
-
+```{r}
+cor(ChemicalManufacturingProcess$Yield, ChemicalManufacturingProcess$ManufacturingProcess13)
+```
 
 
 
