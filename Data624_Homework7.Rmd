@@ -3,14 +3,14 @@ title: "Data624 - Homework7"
 author: "Amit Kapoor"
 date: "3/28/2021"
 output:
+  pdf_document:
+    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
-  pdf_document:
-    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -105,6 +105,9 @@ length(corr.90) %>% paste('columns having correlation 0.90 or more are removed. 
 Split the data into a training and a test set, pre-process the data, and tune a PLS model. How many latent variables are optimal and what is the corresponding resampled estimate of $R^2$?
 
 
+We will do the train and test set partition as 70% and 30% respectively and then fit the pls model using $R^2$ as the metric. The train function uses `center` and `scale` where center will subtract the mean of predictor from corresponding value and scale to divide by sd.
+
+
 ```{r}
 set.seed(786)
 partition <- createDataPartition(permeability, p=0.70, list = FALSE)
@@ -123,7 +126,7 @@ pls.fit <- train(x=X.train,
                  method="pls",
                  metric="Rsquared",
                  tuneLength=10, 
-                 trControl=trainControl(method = "cv", verboseIter = TRUE),
+                 trControl=trainControl(method = "cv"),
                  preProcess=c("center", "scale")
                  )
 
@@ -269,11 +272,16 @@ plot(enet.fit)
 ```
 
 
+Comparing the summary below we could see the best model as elastic net against the training data as the $R^2$ is 0.503.
+
+
 ```{r}
 set.seed(786)
 summary(resamples(list(PLS=pls.fit, Ridge=ridge.fit, Lasso=lasso.fit, Elasticnet=enet.fit)))
 ```
 
+
+Next is to compare the accuracies for all the model against the test data.
 
 
 ```{r}
@@ -337,6 +345,8 @@ The matrix `processPredictors` contains the 57 predictors (12 describing the inp
 ## (b) 
 A small percentage of cells in the predictor set contain missing values. Use an imputation function to fill in these missing values (e.g., see Sect. 3.8).
 
+We will first see all the variables having any of the missing values. We have used below complete.cases() function to find the the missing values.
+
 
 ```{r}
 # columns having missing values
@@ -344,7 +354,7 @@ colnames(ChemicalManufacturingProcess)[!complete.cases(t(ChemicalManufacturingPr
 ```
 
 
-So there are 28 columns having missing values.
+So there are 28 columns having missing values. Here is the plot for missing values of all the predictors.
 
 
 ```{r fig1, fig.height=10, fig.width=10}
@@ -367,8 +377,8 @@ colnames(chem_df)[!complete.cases(t(chem_df))]
 ## (c) 
 Split the data into a training and a test set, pre-process the data, and tune a model of your choice from this chapter. What is the optimal value of the performance metric?
 
-We will first look into pairwise correlation above 0.90 and remove the predictors having correlation with cutoff 0.90.
 
+We will first filter out the predictors that have low frequencies using the `nearZeroVar` function from the caret package. After applying this function we see 1 column is removed and 56  predictors are left for modeling.
 
 ```{r}
 chem.remove.pred <- nearZeroVar(chem_df)
@@ -377,12 +387,17 @@ length(chem.remove.pred) %>% paste('columns are removed. ', dim(chem_df)[2], ' p
 ```
 
 
+We will now look into pairwise correlation above 0.90 and remove the predictors having correlation with cutoff 0.90.
+
 
 ```{r}
 chem.corr.90 <- findCorrelation(cor(chem_df), cutoff=0.90)
 chem_df <- chem_df[,-chem.corr.90]
 length(chem.corr.90) %>% paste('columns having correlation 0.90 or more are removed. ', dim(chem_df)[2], ' predictors are left for modeling.') %>% print()
 ```
+
+
+Next step is to split the data in training and testing set. We reserve 70% for training and 30% for testing. After split we will fit elastic net model.
 
 
 ```{r}
@@ -407,7 +422,7 @@ chem.enet.fit <- train(x=X.train,
                        y=y.train,
                        method="glmnet",
                        metric="Rsquared",
-                       trControl=trainControl(method = "cv",number=5),
+                       trControl=trainControl(method = "cv",number=10),
                        tuneLength = 5
                  )
 
@@ -421,10 +436,14 @@ chem.enet.fit
 chem.enet.fit$bestTune
 ```
 
+From the elastic net model we see the best alpha and lambda came up as 0.32 AND 0.48 respectively. We have used $R^2$ to select the optimal model.
+
 
 ```{r}
 plot(chem.enet.fit)
 ```
+
+Now we will find the RSquare and RMSE values for besttune model. It comes out $R^2$ as 63% and RMSE as 1.15. We see the model is able to explain 63% of variance of the data.
 
 
 ```{r}
@@ -439,11 +458,11 @@ data.frame(RSquared=chem.enet.fit[["results"]][["Rsquared"]][as.numeric(rownames
 Predict the response for the test set.What is the value of the performance metric and how does this compare with the resampled performance metric on the training set?
 
 
-
-
+Lets do the test prediction and check the values of $R^2$, RMSE and MAE parameters.
 
 
 ```{r}
+set.seed(786)
 enet.pred <- predict(chem.enet.fit, newdata = X.test)
 (pred.result <- postResample(pred = enet.pred, obs=y.test))
 ```
@@ -476,6 +495,9 @@ plot(varImp(chem.enet.fit), top=20)
 Explore the relationships between each of the top predictors and the response. How could this information be helpful in improving yield in future runs of the manufacturing process?
 
 
+A positive coefficient shows that is corresponding predictore increases, response mean will also increase while the negative coefficient shows vice versa. Among the positive coefficients, `ManufacturingProcess32` has the highest coefficient value.
+
+
 ```{r}
 coeffs = coef(chem.enet.fit$finalModel, chem.enet.fit$bestTune$lambda)
 (coeffs.df = data.frame(cbind(variables = coeffs@Dimnames[[1]][coeffs@i+1], coef = coeffs@x)))
@@ -485,12 +507,13 @@ coeffs = coef(chem.enet.fit$finalModel, chem.enet.fit$bestTune$lambda)
 coeffs.df[coeffs.df$coef>0,]
 ```
 
-
+Among the positive coefficients, `ManufacturingProcess13` has the lowest coefficient value then the other values.
 
 ```{r}
 coeffs.df[coeffs.df$coef<0,]
 ```
 
+Finally here is the correlation value for `ManufacturingProcess32` and `ManufacturingProcess13` with the response variable `Yield.`
 
 ```{r}
 cor(ChemicalManufacturingProcess$Yield, ChemicalManufacturingProcess$ManufacturingProcess32)
