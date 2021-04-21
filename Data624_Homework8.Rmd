@@ -3,19 +3,29 @@ title: "Data624 - Homework8"
 author: "Amit Kapoor"
 date: "4/19/2021"
 output:
+  pdf_document:
+    latex_engine: xelatex
+    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
-  pdf_document:
-    latex_engine: xelatex
-    toc: yes
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, fig.align = "center", fig.height = 5, fig.width = 8)
+```
+
+
+
+```{r,warning=FALSE,message=FALSE}
+
+library(AppliedPredictiveModeling)
+library(tidyverse)
+library(caret)
+library(mlbench)
 ```
 
 
@@ -27,8 +37,131 @@ Friedman (1991) introduced several benchmark data sets create by simulation. One
 
 where the x values are random variables uniformly distributed between [0, 1] (there are also 5 other non-informative variables also created in the simulation). The package `mlbench` contains a function called `mlbench.friedman1` that simulates these data: 
 
+
+```{r}
+set.seed(200)
+trainingData <- mlbench.friedman1(200, sd=1)
+trainingData$x <- data.frame(trainingData$x)
+# featurePlot
+featurePlot(trainingData$x, trainingData$y)
+```
+
+
+```{r}
+glimpse(trainingData$x)
+```
+
+
+
+
+
+```{r}
+testData <- mlbench.friedman1(5000, sd=1)
+testData$x <- data.frame(testData$x)
+glimpse(testData)
+```
+
+
+
 ## Models
 Tune several models on these data.
+
+
+### K-Nearest Neighbors
+
+
+```{r}
+set.seed(317)
+knnfit <- train(trainingData$x,
+                trainingData$y,
+                method = "knn",
+                preProcess = c("center","scale"),
+                tuneLength = 20,
+                trControl = trainControl(method = "cv"))
+
+knnfit
+```
+
+
+```{r}
+knnfit$bestTune
+```
+
+
+
+### Support Vector Machines
+
+
+```{r}
+set.seed(317)
+svmfit <- train(trainingData$x,
+                trainingData$y,
+                method = "svmRadial",
+                preProcess = c("center","scale"),
+                tuneLength = 20,
+                trControl = trainControl(method = "cv"))
+
+svmfit
+```
+
+
+
+```{r}
+svmfit$finalModel
+```
+
+
+
+### Multivariate Adaptive Regression Splines
+
+
+```{r}
+set.seed(317)
+marsGrid <- expand.grid(.degree=1:2, .nprune=2:38)
+marsfit <- train(trainingData$x,
+                trainingData$y,
+                method = "earth",
+                preProcess = c("center","scale"),
+                tuneGrid = marsGrid,
+                trControl = trainControl(method = "cv"))
+
+marsfit
+```
+
+
+
+```{r}
+marsfit$bestTune
+```
+
+
+
+### Neural Networks
+
+
+```{r}
+nnetGrid <- expand.grid(.decay=c(0,0.01,.1),
+                        .size=c(1:10),
+                        .bag=FALSE)
+
+nnetfit <- train(trainingData$x,
+                 trainingData$y,
+                 method = "avNNet", 
+                 tuneGrid = nnetGrid, 
+                 preProcess = c("center","scale"), 
+                 linout = TRUE,
+                 trace = FALSE,
+                 MaxNWts =10 * (ncol(trainingData$x)+1) +10+1,
+                 maxit=500)
+
+nnetfit
+```
+
+
+```{r}
+nnetfit$bestTune
+```
+
 
 
 ## Performance
