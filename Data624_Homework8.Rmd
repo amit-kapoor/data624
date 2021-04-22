@@ -3,15 +3,15 @@ title: "Data624 - Homework8"
 author: "Amit Kapoor"
 date: "4/19/2021"
 output:
-  pdf_document:
-    latex_engine: xelatex
-    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
+  pdf_document:
+    latex_engine: xelatex
+    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -87,6 +87,21 @@ knnfit
 knnfit$bestTune
 ```
 
+```{r}
+plot(knnfit)
+```
+
+
+```{r}
+plot(varImp(knnfit))
+```
+
+
+```{r}
+data.frame(Rsquared=knnfit[["results"]][["Rsquared"]][as.numeric(rownames(knnfit$bestTune))],
+           RMSE=knnfit[["results"]][["RMSE"]][as.numeric(rownames(knnfit$bestTune))])
+```
+
 
 
 ### Support Vector Machines
@@ -108,6 +123,23 @@ svmfit
 
 ```{r}
 svmfit$finalModel
+```
+
+
+```{r}
+plot(svmfit)
+```
+
+
+```{r}
+plot(varImp(svmfit))
+```
+
+
+
+```{r}
+data.frame(Rsquared=svmfit[["results"]][["Rsquared"]][as.numeric(rownames(svmfit$bestTune))],
+           RMSE=svmfit[["results"]][["RMSE"]][as.numeric(rownames(svmfit$bestTune))])
 ```
 
 
@@ -135,11 +167,26 @@ marsfit$bestTune
 ```
 
 
+```{r}
+plot(marsfit)
+```
+
+```{r}
+plot(varImp(marsfit))
+```
+
+```{r}
+data.frame(Rsquared=marsfit[["results"]][["Rsquared"]][as.numeric(rownames(marsfit$bestTune))],
+           RMSE=marsfit[["results"]][["RMSE"]][as.numeric(rownames(marsfit$bestTune))])
+```
+
+
 
 ### Neural Networks
 
 
 ```{r}
+set.seed(317)
 nnetGrid <- expand.grid(.decay=c(0,0.01,.1),
                         .size=c(1:10),
                         .bag=FALSE)
@@ -163,9 +210,46 @@ nnetfit$bestTune
 ```
 
 
+```{r}
+plot(nnetfit)
+```
+
+
+```{r}
+plot(varImp(nnetfit))
+```
+
+
+```{r}
+data.frame(Rsquared=nnetfit[["results"]][["Rsquared"]][as.numeric(rownames(nnetfit$bestTune))],
+           RMSE=nnetfit[["results"]][["RMSE"]][as.numeric(rownames(nnetfit$bestTune))])
+```
+
+
+
 
 ## Performance
 Which models appear to give the best performance? Does MARS select the informative predictors (those named X1–X5)?
+
+
+
+```{r}
+set.seed(317)
+knn.pred <- predict(knnfit, newdata = testData$x)
+svm.pred <- predict(svmfit, newdata = testData$x)
+mars.pred <- predict(marsfit, newdata = testData$x)
+nnet.pred <- predict(nnetfit, newdata = testData$x)
+
+
+data.frame(rbind(KNN=postResample(pred=knn.pred,obs = testData$y),
+                 SVM=postResample(pred=svm.pred,obs = testData$y),
+                 MARS=postResample(pred=mars.pred,obs = testData$y),
+                 NNET=postResample(pred=nnet.pred,obs = testData$y)))
+
+```
+
+
+
 
 
 # Exercise 7.5
