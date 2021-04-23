@@ -331,7 +331,7 @@ pre.proc <- preProcess(chem_df, method = c("center", "scale"))
 chem_df <- predict(pre.proc, chem_df)
 
 # partition
-chem.part <- createDataPartition(ChemicalManufacturingProcess$Yield, p=0.70, list = FALSE)
+chem.part <- createDataPartition(ChemicalManufacturingProcess$Yield, p=0.80, list = FALSE)
 
 # predictor
 X.train <- chem_df[chem.part,]
@@ -361,7 +361,7 @@ knnmodel <- train(X.train,
                 y.train,
                 method = "knn",
                 preProcess = c("center","scale"),
-                tuneLength = 20,
+                tuneLength = 10,
                 trControl = trainControl(method = "cv"))
 
 knnmodel
@@ -398,7 +398,7 @@ svmmodel <- train(X.train,
                 y.train,
                 method = "svmRadial",
                 preProcess = c("center","scale"),
-                tuneLength = 20,
+                tuneLength = 10,
                 trControl = trainControl(method = "cv"))
 
 svmmodel
@@ -437,7 +437,7 @@ marsGrid2 <- expand.grid(.degree=1:2, .nprune=2:38)
 marsmodel <- train(X.train,
                 y.train,
                 method = "earth",
-                preProcess = c("center","scale"),
+                #preProcess = c("center","scale"),
                 tuneGrid = marsGrid2,
                 trControl = trainControl(method = "cv"))
 
@@ -472,14 +472,14 @@ data.frame(Rsquared=marsmodel[["results"]][["Rsquared"]][as.numeric(rownames(mar
 ```{r, warning=FALSE}
 set.seed(317)
 nnetGrid2 <- expand.grid(.decay=c(0,0.01,.1),
-                        .size=c(1:10),
+                        .size=c(1:5),
                         .bag=FALSE)
 
 nnetmodel <- train(X.train,
                  y.train,
                  method = "avNNet", 
                  tuneGrid = nnetGrid2, 
-                 preProcess = c("center","scale"), 
+                 #preProcess = c("center","scale"), 
                  trControl = trainControl(method = "cv"),
                  linout = TRUE,
                  trace = FALSE,
@@ -538,8 +538,15 @@ data.frame(rbind(KNN=postResample(pred=knnpred,obs = y.test),
 ```
 
 
+From the results, we can conclude that the SVM model predicted the test response with best accuracy $R^2$=0.62, RMSE=1.02 and MAE=0.86
+
+
 ## (b)
 Which predictors are most important in the optimal nonlinear regression model? Do either the biological or process variables dominate the list? How do the top ten important predictors compare to the top ten predictors from the optimal linear model?
+
+
+
+
 
 
 ## (c)
