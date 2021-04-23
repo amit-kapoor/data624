@@ -3,15 +3,15 @@ title: "Data624 - Homework8"
 author: "Amit Kapoor"
 date: "4/19/2021"
 output:
-  pdf_document:
-    latex_engine: xelatex
-    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
+  pdf_document:
+    latex_engine: xelatex
+    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -26,6 +26,7 @@ library(AppliedPredictiveModeling)
 library(tidyverse)
 library(caret)
 library(mlbench)
+library(naniar)
 ```
 
 
@@ -270,10 +271,271 @@ glimpse(ChemicalManufacturingProcess)
 The matrix `processPredictors` contains the 57 predictors (12 describing the input biological material and 45 describing the process predictors) for the 176 manufacturing runs. yield contains the percent yield for each run.
 
 
+We will first see all the variables having any of the missing values. We have used below complete.cases() function to find the the missing values.
+
+
+```{r}
+# columns having missing values
+colnames(ChemicalManufacturingProcess)[!complete.cases(t(ChemicalManufacturingProcess))]
+```
+
+
+So there are 28 columns having missing values. Here is the plot for missing values of all the predictors.
+
+
+```{r fig1, fig.height=10, fig.width=10}
+gg_miss_var(ChemicalManufacturingProcess[,-c(1)]) + labs(y = "Sorted by Missing values")
+```
+
+We will next use preProcess() method to impute the missing values using knnImpute (K nearest neighbor).
+
+```{r}
+pre.proc <- preProcess(ChemicalManufacturingProcess[,c(-1)], method = "knnImpute")
+chem_df <- predict(pre.proc, ChemicalManufacturingProcess[,c(-1)])
+```
+
+
+```{r fig2}
+# columns having missing values
+colnames(chem_df)[!complete.cases(t(chem_df))]
+```
+
+
+
+We will first filter out the predictors that have low frequencies using the `nearZeroVar` function from the caret package. After applying this function we see 1 column is removed and 56  predictors are left for modeling.
+
+```{r}
+chem.remove.pred <- nearZeroVar(chem_df)
+chem_df <- chem_df[,-chem.remove.pred]
+length(chem.remove.pred) %>% paste('columns are removed. ', dim(chem_df)[2], ' predictors are left for modeling.') %>% print()
+```
+
+
+We will now look into pairwise correlation above 0.90 and remove the predictors having correlation with cutoff 0.90.
+
+
+```{r}
+chem.corr.90 <- findCorrelation(cor(chem_df), cutoff=0.90)
+chem_df <- chem_df[,-chem.corr.90]
+length(chem.corr.90) %>% paste('columns having correlation 0.90 or more are removed. ', dim(chem_df)[2], ' predictors are left for modeling.') %>% print()
+```
+
+
+Next step is to split the data in training and testing set. We reserve 70% for training and 30% for testing. After split we will fit elastic net model.
+
+
+```{r}
+set.seed(786)
+
+pre.proc <- preProcess(chem_df, method = c("center", "scale"))
+chem_df <- predict(pre.proc, chem_df)
+
+# partition
+chem.part <- createDataPartition(ChemicalManufacturingProcess$Yield, p=0.70, list = FALSE)
+
+# predictor
+X.train <- chem_df[chem.part,]
+X.test <- chem_df[-chem.part,]
+
+# response 
+y.train <- ChemicalManufacturingProcess$Yield[chem.part]
+y.test <- ChemicalManufacturingProcess$Yield[-chem.part]
+
+
+```
+
 
 
 ## (a)
 Which nonlinear regression model gives the optimal resampling and test set performance
+
+
+
+
+### K-Nearest Neighbors
+
+
+```{r}
+set.seed(317)
+knnmodel <- train(X.train,
+                y.train,
+                method = "knn",
+                preProcess = c("center","scale"),
+                tuneLength = 20,
+                trControl = trainControl(method = "cv"))
+
+knnmodel
+```
+
+
+```{r}
+knnmodel$bestTune
+```
+
+```{r}
+plot(knnmodel)
+```
+
+
+```{r}
+plot(varImp(knnmodel), top = 20)
+```
+
+
+```{r}
+data.frame(Rsquared=knnmodel[["results"]][["Rsquared"]][as.numeric(rownames(knnmodel$bestTune))],
+           RMSE=knnmodel[["results"]][["RMSE"]][as.numeric(rownames(knnmodel$bestTune))])
+```
+
+
+
+### Support Vector Machines
+
+
+```{r}
+set.seed(317)
+svmmodel <- train(X.train,
+                y.train,
+                method = "svmRadial",
+                preProcess = c("center","scale"),
+                tuneLength = 20,
+                trControl = trainControl(method = "cv"))
+
+svmmodel
+```
+
+
+
+```{r}
+svmmodel$finalModel
+```
+
+
+```{r}
+plot(svmmodel)
+```
+
+
+```{r}
+plot(varImp(svmmodel), top = 20)
+```
+
+
+
+```{r}
+data.frame(Rsquared=svmmodel[["results"]][["Rsquared"]][as.numeric(rownames(svmmodel$bestTune))],
+           RMSE=svmmodel[["results"]][["RMSE"]][as.numeric(rownames(svmmodel$bestTune))])
+```
+
+
+### Multivariate Adaptive Regression Splines
+
+
+```{r, warning=FALSE}
+set.seed(317)
+marsGrid2 <- expand.grid(.degree=1:2, .nprune=2:38)
+marsmodel <- train(X.train,
+                y.train,
+                method = "earth",
+                preProcess = c("center","scale"),
+                tuneGrid = marsGrid2,
+                trControl = trainControl(method = "cv"))
+
+marsmodel
+```
+
+
+
+```{r}
+marsmodel$bestTune
+```
+
+
+```{r}
+plot(marsmodel)
+```
+
+```{r}
+plot(varImp(marsmodel), top=20)
+```
+
+```{r}
+data.frame(Rsquared=marsmodel[["results"]][["Rsquared"]][as.numeric(rownames(marsmodel$bestTune))],
+           RMSE=marsmodel[["results"]][["RMSE"]][as.numeric(rownames(marsmodel$bestTune))])
+```
+
+
+
+### Neural Networks
+
+
+```{r, warning=FALSE}
+set.seed(317)
+nnetGrid2 <- expand.grid(.decay=c(0,0.01,.1),
+                        .size=c(1:10),
+                        .bag=FALSE)
+
+nnetmodel <- train(X.train,
+                 y.train,
+                 method = "avNNet", 
+                 tuneGrid = nnetGrid2, 
+                 preProcess = c("center","scale"), 
+                 trControl = trainControl(method = "cv"),
+                 linout = TRUE,
+                 trace = FALSE,
+                 MaxNWts =5 * (ncol(X.train)+1) +5+1,
+                 maxit=500)
+
+nnetmodel
+```
+
+
+```{r}
+nnetmodel$bestTune
+```
+
+
+```{r}
+plot(nnetmodel)
+```
+
+
+```{r}
+plot(varImp(nnetmodel), top=20)
+```
+
+
+```{r}
+data.frame(Rsquared=nnetmodel[["results"]][["Rsquared"]][as.numeric(rownames(nnetmodel$bestTune))],
+           RMSE=nnetmodel[["results"]][["RMSE"]][as.numeric(rownames(nnetmodel$bestTune))])
+```
+
+
+### Optimal resampling
+
+
+```{r}
+set.seed(317)
+summary(resamples(list(KNN=knnmodel, SVM=svmmodel, MARS=marsmodel, NNET=nnetmodel)))
+```
+
+
+### Test set performance
+
+```{r}
+set.seed(317)
+knnpred <- predict(knnmodel, newdata = X.test)
+svmpred <- predict(svmmodel, newdata = X.test)
+marspred <- predict(marsmodel, newdata = X.test)
+nnetpred <- predict(nnetmodel, newdata = X.test)
+
+
+data.frame(rbind(KNN=postResample(pred=knnpred,obs = y.test),
+                 SVM=postResample(pred=svmpred,obs = y.test),
+                 MARS=postResample(pred=marspred,obs = y.test),
+                 NNET=postResample(pred=nnetpred,obs = y.test)))
+
+```
 
 
 ## (b)
