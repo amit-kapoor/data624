@@ -15,7 +15,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, fig.align = "center", fig.height = 5, fig.width = 8)
+knitr::opts_chunk$set(echo = TRUE, fig.align = "center", fig.height = 5, fig.width = 8, warning = FALSE)
 ```
 
 
@@ -94,15 +94,18 @@ knnfit
 
 
 ```{r}
+# final parameters
 knnfit$bestTune
 ```
 
 ```{r}
+# plot RMSE
 plot(knnfit)
 ```
 
 
 ```{r}
+# plot variable importance
 plot(varImp(knnfit))
 ```
 
@@ -141,11 +144,13 @@ svmfit$finalModel
 
 
 ```{r}
+# plot RMSE
 plot(svmfit)
 ```
 
 
 ```{r}
+# plot variable importance
 plot(varImp(svmfit))
 ```
 
@@ -181,15 +186,18 @@ marsfit
 
 
 ```{r}
+# final parameters
 marsfit$bestTune
 ```
 
 
 ```{r}
+# plot RMSE
 plot(marsfit)
 ```
 
 ```{r}
+# plot variable importance
 plot(varImp(marsfit))
 ```
 
@@ -227,16 +235,19 @@ nnetfit
 
 
 ```{r}
+# final parameters
 nnetfit$bestTune
 ```
 
 
 ```{r}
+# plot RMSE
 plot(nnetfit)
 ```
 
 
 ```{r}
+# plot variable importance
 plot(varImp(nnetfit))
 ```
 
@@ -391,15 +402,18 @@ knnmodel
 
 
 ```{r}
+# final parameters
 knnmodel$bestTune
 ```
 
 ```{r}
+# plot RMSE
 plot(knnmodel)
 ```
 
 
 ```{r}
+# plot variable importance
 plot(varImp(knnmodel), top = 20)
 ```
 
@@ -410,6 +424,7 @@ data.frame(Rsquared=knnmodel[["results"]][["Rsquared"]][as.numeric(rownames(knnm
 ```
 
 
+The best tune parameter for the KNN model that resulted in the smallest root mean squared error is 5 which has RMSE = 1.27, and $R^2$= 0.52. Also we can see quite a few top informative predictors from this model.
 
 ### Support Vector Machines
 
@@ -434,11 +449,13 @@ svmmodel$finalModel
 
 
 ```{r}
+# plot RMSE
 plot(svmmodel)
 ```
 
 
 ```{r}
+# plot variable importance
 plot(varImp(svmmodel), top = 20)
 ```
 
@@ -448,6 +465,10 @@ plot(varImp(svmmodel), top = 20)
 data.frame(Rsquared=svmmodel[["results"]][["Rsquared"]][as.numeric(rownames(svmmodel$bestTune))],
            RMSE=svmmodel[["results"]][["RMSE"]][as.numeric(rownames(svmmodel$bestTune))])
 ```
+
+
+
+So we can see here that best SVM model produced Rsquared as 0.68 and RMSE as 1.11. Tuning parameter 'sigma' was held constant at a value of 0.016 RMSE was used to select the optimal model using the smallest value. The final values used for the model were sigma = 0.01657003 and C = 16.
 
 
 ### Multivariate Adaptive Regression Splines
@@ -469,6 +490,7 @@ marsmodel
 
 
 ```{r}
+# final parameters
 marsmodel$bestTune
 ```
 
@@ -477,7 +499,10 @@ marsmodel$bestTune
 plot(marsmodel)
 ```
 
+
+
 ```{r}
+# plot variable importance
 plot(varImp(marsmodel), top=20)
 ```
 
@@ -485,6 +510,10 @@ plot(varImp(marsmodel), top=20)
 data.frame(Rsquared=marsmodel[["results"]][["Rsquared"]][as.numeric(rownames(marsmodel$bestTune))],
            RMSE=marsmodel[["results"]][["RMSE"]][as.numeric(rownames(marsmodel$bestTune))])
 ```
+
+
+
+RMSE was used to select the optimal model using the smallest value. The final values used for the model were nprune = 11 and degree = 1 that resulted Rsquared as 0.59 and RMSE as 1.29. So far we can see SVM model has a best fit on training data comparing with KNN and MARS. Also we see 4 top predictors in this model.
 
 
 
@@ -513,16 +542,21 @@ nnetmodel
 
 
 ```{r}
+# final parameters
 nnetmodel$bestTune
 ```
 
 
+
 ```{r}
+# plot RMSE
 plot(nnetmodel)
 ```
 
 
+
 ```{r}
+# plot variable importance
 plot(varImp(nnetmodel), top=20)
 ```
 
@@ -533,7 +567,13 @@ data.frame(Rsquared=nnetmodel[["results"]][["Rsquared"]][as.numeric(rownames(nne
 ```
 
 
+RMSE was used to select the optimal model using the smallest value. Tuning parameter 'bag' was held constant at a value of FALSE. The final values used for the model were size = 2, decay = 0.01 and bag = FALSE that resulted the Rsquared 0.36 and RMSE as 1.89.
+
+
 ### Optimal resampling
+
+Now we will use resampling method to get the performance metrics and analyze the results to select the best fit model here. So far SVM model produced the best results.
+
 
 
 ```{r}
@@ -567,9 +607,17 @@ From the results, we can conclude that the SVM model predicted the test response
 Which predictors are most important in the optimal nonlinear regression model? Do either the biological or process variables dominate the list? How do the top ten important predictors compare to the top ten predictors from the optimal linear model?
 
 
+Here is the list of top 10 most important predictors from SVM model. The `caret:varImp` calculates the variable importance for regression that shows the relationship between each predictor and the output from linear model fit. We can see below the most important contribution variable is `ManufacturingProcess32` and hence ManufacturingProcess dominate the list.
+
+
+
 ```{r}
+# plot variable importance
 varImp(svmmodel, top=10)
 ```
+
+
+It was stated earlier that elasticnwt model that best fitted the data among linear models. We can see here too that ManufacturingProcess variables dominates the list but ranks seem different between linear and non linear models.
 
 
 ```{r}
