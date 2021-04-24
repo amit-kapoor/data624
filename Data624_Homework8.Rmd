@@ -118,6 +118,8 @@ It is evident here that the best value of K is 9 which resulted Rsquared as 0.69
 
 ### Support Vector Machines
 
+The objective of the support vector machine algo is to find a hyperplane in an N-dimensional space (N being the number of features) that classifies the data points. Here we will use training using svmRadial method .
+
 
 ```{r}
 set.seed(317)
@@ -154,9 +156,13 @@ data.frame(Rsquared=svmfit[["results"]][["Rsquared"]][as.numeric(rownames(svmfit
            RMSE=svmfit[["results"]][["RMSE"]][as.numeric(rownames(svmfit$bestTune))])
 ```
 
+So we can see here that best SVM model produced Rsquared as 0.87 and RMSE as 1.86. Tuning parameter 'sigma' was held constant at a value of 0.063 RMSE was used to select the optimal model using the smallest value. Also the top 5 top predictors are X4, X1, X2, X5 and X3.
+
 
 
 ### Multivariate Adaptive Regression Splines
+
+MARS creates a piecewise linear model which provides an intuitive stepping block into non-linearity after grasping the concept of multiple linear regression. MARS provided a convenient approach to capture the nonlinear relationships in the data by assessing cutpoints (knots) similar to step functions. The procedure assesses each data point for each predictor as a knot and creates a linear regression model with the candidate features.
 
 
 ```{r}
@@ -192,9 +198,12 @@ data.frame(Rsquared=marsfit[["results"]][["Rsquared"]][as.numeric(rownames(marsf
            RMSE=marsfit[["results"]][["RMSE"]][as.numeric(rownames(marsfit$bestTune))])
 ```
 
+RMSE was used to select the optimal model using the smallest value. The final values used for the model were nprune = 14 and degree = 2 that resulted Rsquared as 0.94 and RMSE as 1.20. So far we can see MARS model has a best fit on training data comparing with KNN and SVM. Also the top predictors are X1, X4, X2 and X5.
 
 
 ### Neural Networks
+
+Neural Networks are nonlinear regression techniques inspired by theories about how the brain works. The outcome is modeled by an intermediary set of unobserved variables (hidden variables). These hidden units are linear combinations of the original predictors.
 
 
 ```{r}
@@ -237,7 +246,7 @@ data.frame(Rsquared=nnetfit[["results"]][["Rsquared"]][as.numeric(rownames(nnetf
            RMSE=nnetfit[["results"]][["RMSE"]][as.numeric(rownames(nnetfit$bestTune))])
 ```
 
-
+RMSE was used to select the optimal model using the smallest value. The final values used for the model were size = 4, decay = 0.1 and bag = FALSE that resulted the Rsquared 0.75 and RMSE as 2.50. The top predictors come up are X4, X1, X2, X5 and X3.
 
 
 ## Performance
@@ -261,6 +270,8 @@ data.frame(rbind(KNN=postResample(pred=knn.pred,obs = testData$y),
 ```
 
 
+
+From the results, it is evident that the best model is MARS with $R^2$ = 0.93 and min RMSE = 1.28 on test data. The MARS does select the informative predictors X1-X5. 
 
 
 
