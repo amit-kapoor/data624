@@ -42,10 +42,15 @@ where the x values are random variables uniformly distributed between [0, 1] (th
 ```{r}
 set.seed(200)
 trainingData <- mlbench.friedman1(200, sd=1)
+
+## We convert the 'x' data from a matrix to a data frame
+## One reason is that this will give the columns names.
 trainingData$x <- data.frame(trainingData$x)
+
 # featurePlot
 featurePlot(trainingData$x, trainingData$y)
 ```
+
 
 
 ```{r}
@@ -54,11 +59,13 @@ glimpse(trainingData$x)
 
 
 
-
-
 ```{r}
+## This creates a list with a vector 'y' and a matrix
+## of predictors 'x'. Also simulate a large test set to
+## estimate the true error rate with good precision:
 testData <- mlbench.friedman1(5000, sd=1)
 testData$x <- data.frame(testData$x)
+
 glimpse(testData)
 ```
 
@@ -69,6 +76,8 @@ Tune several models on these data.
 
 
 ### K-Nearest Neighbors
+
+The KNN algorithm assumes that similar things exist in close proximity. In other words, kNN approach simply predicts a new sample using the K-closest samples from the training set. Here we will use training using knn method on training data and find the besttune k value.
 
 
 ```{r}
@@ -102,6 +111,8 @@ plot(varImp(knnfit))
 data.frame(Rsquared=knnfit[["results"]][["Rsquared"]][as.numeric(rownames(knnfit$bestTune))],
            RMSE=knnfit[["results"]][["RMSE"]][as.numeric(rownames(knnfit$bestTune))])
 ```
+
+It is evident here that the best value of K is 9 which resulted Rsquared as 0.69 and RMSE as 3.01. Also the top 5 top predictors are X4, X1, X2, X5 and X3.
 
 
 
@@ -543,6 +554,26 @@ From the results, we can conclude that the SVM model predicted the test response
 
 ## (b)
 Which predictors are most important in the optimal nonlinear regression model? Do either the biological or process variables dominate the list? How do the top ten important predictors compare to the top ten predictors from the optimal linear model?
+
+
+```{r}
+varImp(svmmodel, top=10)
+```
+
+
+```{r}
+# tune elastic net model 
+chem.enet.fit <- train(x=X.train, 
+                       y=y.train,
+                       method="glmnet",
+                       metric="Rsquared",
+                       trControl=trainControl(method = "cv",number=10),
+                       tuneLength = 5
+                 )
+
+
+varImp(chem.enet.fit)
+```
 
 
 
