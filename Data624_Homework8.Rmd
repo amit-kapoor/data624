@@ -3,15 +3,15 @@ title: "Data624 - Homework8"
 author: "Amit Kapoor"
 date: "4/19/2021"
 output:
+  pdf_document:
+    latex_engine: xelatex
+    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
-  pdf_document:
-    latex_engine: xelatex
-    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -641,6 +641,29 @@ varImp(chem.enet.fit)
 
 ## (c)
 Explore the relationships between the top predictors and the response for the predictors that are unique to the optimal nonlinear regression model. Do these plots reveal intuition about the biological or process predictors and their relationship with yield?
+
+
+We will now get the top 10 predictors, arrange it in order and then draw the `featureplot` to explore the visualization.
+
+
+```{r}
+# predictors importance
+vimp <- varImp(svmmodel)$importance
+# top 10 predictors
+top10.vars <- head(rownames(vimp)[order(-vimp$Overall)], 10)
+as.data.frame(top10.vars)
+```
+
+```{r fig.width=12}
+X <- ChemicalManufacturingProcess[,top10.vars]
+Y <- ChemicalManufacturingProcess$Yield
+
+featurePlot(X,Y)
+```
+
+
+From the plots above, it is apparent that for SVM model (optimal model) the top predictors have mostly linear relationship with the response `Yield`. Increasing the features like `ManufacturingProcess32` or `BiologicalMaterial06` increases the response while increasing features like ManufacturingProcess13 cause decrease in response variable.
+
 
 
 
