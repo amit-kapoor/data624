@@ -3,15 +3,15 @@ title: "Data624 - Homework9"
 author: "Amit Kapoor"
 date: "4/26/2021"
 output:
-  pdf_document:
-    latex_engine: xelatex
-    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
+  pdf_document:
+    latex_engine: xelatex
+    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -24,6 +24,7 @@ knitr::opts_chunk$set(echo = TRUE, fig.align = "center", fig.height = 5, fig.wid
 library(mlbench)
 library(randomForest)
 library(caret)
+library(party)
 ```
 
 
@@ -34,28 +35,38 @@ library(caret)
 # Exercise 8.1
 Recreate the simulated data from Exercise 7.2
 
+
 ```{r}
 set.seed(317)
-simulated = mlbench.friedman1(200, sd = 1)
-simulated = cbind(simulated$x, simulated$y)
-simulated = as.data.frame(simulated)
+simulated <- mlbench.friedman1(200, sd = 1)
+simulated <- cbind(simulated$x, simulated$y)
+simulated <- as.data.frame(simulated)
 colnames(simulated)[ncol(simulated)] = "y"
 ```
+
+
 
 ## (a) 
 Fit a random forest model to all of the predictors, then estimate the variable importance scores:
 
 ```{r}
-model1 = randomForest(y ~ ., data = simulated, importance = TRUE, ntree = 1000)
-rfImp1 = varImp(model1, scale = FALSE)
+model1 <- randomForest(y ~ ., data = simulated, importance = TRUE, ntree = 1000)
+rfImp1 <- varImp(model1, scale = FALSE)
 ```
+
 
 Did the random forest model significantly use the uninformative predictors (V6 – V10)?
 
+```{r}
+rfImp1
+```
+
+Based on the above results, the random forest model doesnt significantly use the uninformative predictors (V6 – V10).
 
 
 ## (b) 
 Now add an additional predictor that is highly correlated with one of the informative predictors. For example:
+
 
 ```{r}
 set.seed(317)
@@ -66,9 +77,37 @@ cor(simulated$duplicate1, simulated$V1)
 Fit another random forest model to these data. Did the importance score for V1 change? What happens when you add another predictor that is also highly correlated with V1?
 
 
+```{r}
+model2 <- randomForest(y ~ ., data = simulated, importance = TRUE, ntree = 1000)
+rfImp2 <- varImp(model2, scale = FALSE)
+```
+
+
+```{r}
+rfImp2
+```
+
+We see here after adding another predictor that is highly correlated with V1, its importance got reduced. The importance now is splitted between V1 and duplicate1 after adding the highly correlated duplicate1. 
+
+
 
 ## (c) 
 Use the `cforest` function in the `party` package to fit a random forest model using conditional inference trees. The `party` package function `varimp` can calculate predictor importance. The conditional argument of that function toggles between the traditional importance measure and the modified version described in Strobl et al. (2007). Does this importance show the same pattern as the traditional random forest model?
+
+
+```{r}
+model3 <- cforest(y ~ ., data = simulated)
+# conditional = TRUE
+ctrue <- varimp(model3, conditional = TRUE)
+# conditional = FALSE
+cfalse <- varimp(model3, conditional = FALSE)
+```
+
+```{r}
+cbind(model2=rfImp2, cforest_con=ctrue,cforest_uncon=cfalse )
+```
+
+We can see here that importance shows the different pattern as compared to traditional random forest model. V4, remains the most important variable in all the 3 cases. Also we can see that uninformative predictors remains low in all 3 cases.
 
 
 

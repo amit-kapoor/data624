@@ -332,34 +332,83 @@ div.tocify {
 
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(mlbench)</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(randomForest)</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(caret)</span></code></pre></div>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(caret)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(party)</span></code></pre></div>
 <div id="exercise-8.1" class="section level1">
 <h1>Exercise 8.1</h1>
 <p>Recreate the simulated data from Exercise 7.2</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">317</span>)</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>simulated <span class="ot">=</span> <span class="fu">mlbench.friedman1</span>(<span class="dv">200</span>, <span class="at">sd =</span> <span class="dv">1</span>)</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>simulated <span class="ot">=</span> <span class="fu">cbind</span>(simulated<span class="sc">$</span>x, simulated<span class="sc">$</span>y)</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>simulated <span class="ot">=</span> <span class="fu">as.data.frame</span>(simulated)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>simulated <span class="ot">&lt;-</span> <span class="fu">mlbench.friedman1</span>(<span class="dv">200</span>, <span class="at">sd =</span> <span class="dv">1</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>simulated <span class="ot">&lt;-</span> <span class="fu">cbind</span>(simulated<span class="sc">$</span>x, simulated<span class="sc">$</span>y)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>simulated <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(simulated)</span>
 <span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(simulated)[<span class="fu">ncol</span>(simulated)] <span class="ot">=</span> <span class="st">&quot;y&quot;</span></span></code></pre></div>
 <div id="a" class="section level2">
 <h2>(a)</h2>
 <p>Fit a random forest model to all of the predictors, then estimate the variable importance scores:</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>model1 <span class="ot">=</span> <span class="fu">randomForest</span>(y <span class="sc">~</span> ., <span class="at">data =</span> simulated, <span class="at">importance =</span> <span class="cn">TRUE</span>, <span class="at">ntree =</span> <span class="dv">1000</span>)</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>rfImp1 <span class="ot">=</span> <span class="fu">varImp</span>(model1, <span class="at">scale =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>model1 <span class="ot">&lt;-</span> <span class="fu">randomForest</span>(y <span class="sc">~</span> ., <span class="at">data =</span> simulated, <span class="at">importance =</span> <span class="cn">TRUE</span>, <span class="at">ntree =</span> <span class="dv">1000</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>rfImp1 <span class="ot">&lt;-</span> <span class="fu">varImp</span>(model1, <span class="at">scale =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
 <p>Did the random forest model significantly use the uninformative predictors (V6 – V10)?</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>rfImp1</span></code></pre></div>
+<pre><code>##          Overall
+## V1   6.017023817
+## V2   7.197326850
+## V3   1.969544508
+## V4   9.875194405
+## V5   2.087946997
+## V6   0.060239433
+## V7  -0.051620797
+## V8  -0.024680384
+## V9  -0.003664196
+## V10 -0.082197496</code></pre>
+<p>Based on the above results, the random forest model doesnt significantly use the uninformative predictors (V6 – V10).</p>
 </div>
 <div id="b" class="section level2">
 <h2>(b)</h2>
 <p>Now add an additional predictor that is highly correlated with one of the informative predictors. For example:</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">317</span>)</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>simulated<span class="sc">$</span>duplicate1 <span class="ot">=</span> simulated<span class="sc">$</span>V1 <span class="sc">+</span> <span class="fu">rnorm</span>(<span class="dv">200</span>) <span class="sc">*</span> .<span class="dv">1</span></span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="fu">cor</span>(simulated<span class="sc">$</span>duplicate1, simulated<span class="sc">$</span>V1)</span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">317</span>)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>simulated<span class="sc">$</span>duplicate1 <span class="ot">=</span> simulated<span class="sc">$</span>V1 <span class="sc">+</span> <span class="fu">rnorm</span>(<span class="dv">200</span>) <span class="sc">*</span> .<span class="dv">1</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="fu">cor</span>(simulated<span class="sc">$</span>duplicate1, simulated<span class="sc">$</span>V1)</span></code></pre></div>
 <pre><code>## [1] 0.9400187</code></pre>
 <p>Fit another random forest model to these data. Did the importance score for V1 change? What happens when you add another predictor that is also highly correlated with V1?</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>model2 <span class="ot">&lt;-</span> <span class="fu">randomForest</span>(y <span class="sc">~</span> ., <span class="at">data =</span> simulated, <span class="at">importance =</span> <span class="cn">TRUE</span>, <span class="at">ntree =</span> <span class="dv">1000</span>)</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>rfImp2 <span class="ot">&lt;-</span> <span class="fu">varImp</span>(model2, <span class="at">scale =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>rfImp2</span></code></pre></div>
+<pre><code>##                Overall
+## V1          4.92452320
+## V2          6.75435224
+## V3          1.76154183
+## V4          9.29279187
+## V5          2.19868128
+## V6          0.16614783
+## V7         -0.04778316
+## V8          0.01070291
+## V9         -0.01098350
+## V10        -0.15881709
+## duplicate1  2.59912860</code></pre>
+<p>We see here after adding another predictor that is highly correlated with V1, its importance got reduced. The importance now is splitted between V1 and duplicate1 after adding the highly correlated duplicate1.</p>
 </div>
 <div id="c" class="section level2">
 <h2>(c)</h2>
 <p>Use the <code>cforest</code> function in the <code>party</code> package to fit a random forest model using conditional inference trees. The <code>party</code> package function <code>varimp</code> can calculate predictor importance. The conditional argument of that function toggles between the traditional importance measure and the modified version described in Strobl et al. (2007). Does this importance show the same pattern as the traditional random forest model?</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>model3 <span class="ot">&lt;-</span> <span class="fu">cforest</span>(y <span class="sc">~</span> ., <span class="at">data =</span> simulated)</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="co"># conditional = TRUE</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>ctrue <span class="ot">&lt;-</span> <span class="fu">varimp</span>(model3, <span class="at">conditional =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="co"># conditional = FALSE</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>cfalse <span class="ot">&lt;-</span> <span class="fu">varimp</span>(model3, <span class="at">conditional =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cbind</span>(<span class="at">model2=</span>rfImp2, <span class="at">cforest_con=</span>ctrue,<span class="at">cforest_uncon=</span>cfalse )</span></code></pre></div>
+<pre><code>##                Overall cforest_con cforest_uncon
+## V1          4.92452320  2.06175787  4.4446682522
+## V2          6.75435224  5.06766860  6.8801452007
+## V3          1.76154183  0.15834716  0.2782253511
+## V4          9.29279187  6.67572503 10.2896859310
+## V5          2.19868128  1.20148004  1.7910397555
+## V6          0.16614783  0.09955285  0.1839316106
+## V7         -0.04778316 -0.01022655  0.0151452375
+## V8          0.01070291  0.01982557 -0.0004442511
+## V9         -0.01098350  0.06097283  0.0166033367
+## V10        -0.15881709 -0.06822672 -0.0523436249
+## duplicate1  2.59912860  0.91810824  2.0665125520</code></pre>
+<p>We can see here that importance shows the different pattern as compared to traditional random forest model. V4, remains the most important variable in all the 3 cases. Also we can see that uninformative predictors remains low in all 3 cases.</p>
 </div>
 <div id="d" class="section level2">
 <h2>(d)</h2>
