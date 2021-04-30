@@ -504,14 +504,17 @@ div.tocify {
 <div id="a-1" class="section level2">
 <h2>(a)</h2>
 <p>Why does the model on the right focus its importance on just the first few predictors, whereas the model on the left spreads importance across more predictors?</p>
+<p>Seeing the graphs, the one on the right has higher bagging fraction and higher learning rate that means it used larger chunk of data and increases the correlation in every iteration. Thus only less number of variables are considered important. Not the plot on the left has lower bagging fraction and lower learning rate that means it uses small chunk of data for model training and less dependent in each iteration. Thus the model on the left spreads importance across more predictors.</p>
 </div>
 <div id="b-1" class="section level2">
 <h2>(b)</h2>
 <p>Which model do you think would be more predictive of other samples?</p>
+<p>Bagging fraction and learning rate are considered important params to control overfitting. Based on above explanation, the model with smaller bagging fraction and learning rate will lead to better generalization over the test/new data. Given that, the model with smaller learning rate and bagging fraction would be more predictive over other samples.</p>
 </div>
 <div id="c-1" class="section level2">
 <h2>(c)</h2>
 <p>How would increasing interaction depth affect the slope of predictor importance for either model in Fig. 8.24?</p>
+<p>Increasing the interaction depth would include more predictors and result to spread out importance. This would result the slope of predictor importance become flatten.</p>
 </div>
 </div>
 <div id="exercise-8.7" class="section level1">
