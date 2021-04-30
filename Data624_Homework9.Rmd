@@ -190,18 +190,19 @@ In stochastic gradient boosting, the bagging fraction and learning rate will gov
 ## (a)
 Why does the model on the right focus its importance on just the first few predictors, whereas the model on the left spreads importance across more predictors?
 
+Seeing the graphs, the one on the right has higher bagging fraction and higher learning rate that means it used larger chunk of data and increases the correlation in every iteration. Thus only less number of variables are considered important. Not the plot on the left has lower bagging fraction and lower learning rate that means it uses small chunk of data for model training and less dependent in each iteration. Thus the model on the left spreads importance across more predictors.
+
+
 
 ## (b)
 Which model do you think would be more predictive of other samples?
 
+Bagging fraction and learning rate are considered important params to control overfitting. Based on above explanation, the model with smaller bagging fraction and learning rate will lead to better generalization over the test/new data. Given that, the model with smaller learning rate and bagging fraction would be more predictive over other samples.
 
 ## (c)
 How would increasing interaction depth affect the slope of predictor importance for either model in Fig. 8.24?
 
-
-
-
-
+Increasing the interaction depth would include more predictors and result to spread out importance. This would result the slope of predictor importance become flatten. 
 
 
 
