@@ -3,15 +3,15 @@ title: "Data624 - Homework9"
 author: "Amit Kapoor"
 date: "4/26/2021"
 output:
+  pdf_document:
+    latex_engine: xelatex
+    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
-  pdf_document:
-    latex_engine: xelatex
-    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -25,6 +25,9 @@ library(mlbench)
 library(randomForest)
 library(caret)
 library(party)
+library(gbm)
+library(Cubist)
+library(rpart)
 ```
 
 
@@ -115,15 +118,68 @@ We can see here that importance shows the different pattern as compared to tradi
 Repeat this process with different tree models, such as boosted trees and Cubist. Does the same pattern occur?
 
 
+```{r}
+set.seed(317)
+
+# boosting regression trees via stochastic gradient boosting machines
+
+gbmGrid <- expand.grid(interaction.depth = seq(1, 7, by = 2), 
+                       n.trees = seq(100, 1000, by = 50), 
+                       shrinkage = 0.1,
+                       n.minobsinnode = 5)
+
+gbm_model <- train(y ~ ., data = simulated,
+                  method = "gbm",
+                  tuneGrid = gbmGrid, 
+                  verbose = FALSE)
+
+gbm_imp <- varImp(gbm_model)
+gbm_imp
+```
+
+
+
+```{r}
+set.seed(317)
+
+# cubist
+cubist_model <- cubist(x = simulated[, names(simulated)[names(simulated) != 'y']], 
+                 y = simulated[,c('y')])
+cubist_imp <- varImp(cubist_model)
+cubist_imp
+```
+
+Comparing the results with cforest, the uninformative predictors (V6-V10) still appear as lowest in ranking. V4 still appear as highest for boosted trees but cubist shows V2 as highest in ranking.
 
 
 
 # Exercise 8.2
 Use a simulation to show tree bias with different granularities.
 
+We will do the simulation here with 4 variables having different granularities. The response variable we will choose, would be a function of random selection and some noise.
+
+```{r}
+set.seed(317)
+
+df <- data.frame(x1 = sample(0:10000/10000, 250, replace = TRUE),
+                 x2 = sample(0:100/100, 250, replace = TRUE),
+                 x3 = sample(0:1000/1000, 250, replace = TRUE),
+                 x4 = sample(0:10/10, 250, replace = TRUE))
+
+df$y <- df$x1 + df$x4 + rnorm(250)
+
+str(df)
+```
 
 
 
+```{r}
+# rpart
+rp_model <- rpart(y~., data=df)
+varImp(rp_model)
+```
+
+We can see the tree mostly uses x1 to split and x4 the least. Though x2 and x3 are not used to generate target but they are also used by tree to split. With this simulation, it is evident here that there is a selection bias in the tree model where favored predictors have more distinct values.
 
 
 

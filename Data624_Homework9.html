@@ -333,7 +333,10 @@ div.tocify {
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(mlbench)</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(randomForest)</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(caret)</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(party)</span></code></pre></div>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(party)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gbm)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(Cubist)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(rpart)</span></code></pre></div>
 <div id="exercise-8.1" class="section level1">
 <h1>Exercise 8.1</h1>
 <p>Recreate the simulated data from Exercise 7.2</p>
@@ -413,11 +416,87 @@ div.tocify {
 <div id="d" class="section level2">
 <h2>(d)</h2>
 <p>Repeat this process with different tree models, such as boosted trees and Cubist. Does the same pattern occur?</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">317</span>)</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="co"># boosting regression trees via stochastic gradient boosting machines</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>gbmGrid <span class="ot">&lt;-</span> <span class="fu">expand.grid</span>(<span class="at">interaction.depth =</span> <span class="fu">seq</span>(<span class="dv">1</span>, <span class="dv">7</span>, <span class="at">by =</span> <span class="dv">2</span>), </span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>                       <span class="at">n.trees =</span> <span class="fu">seq</span>(<span class="dv">100</span>, <span class="dv">1000</span>, <span class="at">by =</span> <span class="dv">50</span>), </span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>                       <span class="at">shrinkage =</span> <span class="fl">0.1</span>,</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>                       <span class="at">n.minobsinnode =</span> <span class="dv">5</span>)</span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>gbm_model <span class="ot">&lt;-</span> <span class="fu">train</span>(y <span class="sc">~</span> ., <span class="at">data =</span> simulated,</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>                  <span class="at">method =</span> <span class="st">&quot;gbm&quot;</span>,</span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>                  <span class="at">tuneGrid =</span> gbmGrid, </span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>                  <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a>gbm_imp <span class="ot">&lt;-</span> <span class="fu">varImp</span>(gbm_model)</span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a>gbm_imp</span></code></pre></div>
+<pre><code>## gbm variable importance
+## 
+##             Overall
+## V4         100.0000
+## V2          80.1464
+## V1          58.5491
+## V3          48.3656
+## V5          39.4555
+## duplicate1  19.3401
+## V6           6.1123
+## V8           1.9197
+## V7           0.4404
+## V10          0.1300
+## V9           0.0000</code></pre>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">317</span>)</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="co"># cubist</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>cubist_model <span class="ot">&lt;-</span> <span class="fu">cubist</span>(<span class="at">x =</span> simulated[, <span class="fu">names</span>(simulated)[<span class="fu">names</span>(simulated) <span class="sc">!=</span> <span class="st">&#39;y&#39;</span>]], </span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>                 <span class="at">y =</span> simulated[,<span class="fu">c</span>(<span class="st">&#39;y&#39;</span>)])</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>cubist_imp <span class="ot">&lt;-</span> <span class="fu">varImp</span>(cubist_model)</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>cubist_imp</span></code></pre></div>
+<pre><code>##            Overall
+## V2            91.5
+## V1            69.0
+## V4            69.0
+## V3            33.0
+## V5            50.0
+## V8             2.5
+## V6             0.0
+## V7             0.0
+## V9             0.0
+## V10            0.0
+## duplicate1     0.0</code></pre>
+<p>Comparing the results with cforest, the uninformative predictors (V6-V10) still appear as lowest in ranking. V4 still appear as highest for boosted trees but cubist shows V2 as highest in ranking.</p>
 </div>
 </div>
 <div id="exercise-8.2" class="section level1">
 <h1>Exercise 8.2</h1>
 <p>Use a simulation to show tree bias with different granularities.</p>
+<p>We will do the simulation here with 4 variables having different granularities. The response variable we will choose, would be a function of random selection and some noise.</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">317</span>)</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">x1 =</span> <span class="fu">sample</span>(<span class="dv">0</span><span class="sc">:</span><span class="dv">10000</span><span class="sc">/</span><span class="dv">10000</span>, <span class="dv">250</span>, <span class="at">replace =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>                 <span class="at">x2 =</span> <span class="fu">sample</span>(<span class="dv">0</span><span class="sc">:</span><span class="dv">100</span><span class="sc">/</span><span class="dv">100</span>, <span class="dv">250</span>, <span class="at">replace =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>                 <span class="at">x3 =</span> <span class="fu">sample</span>(<span class="dv">0</span><span class="sc">:</span><span class="dv">1000</span><span class="sc">/</span><span class="dv">1000</span>, <span class="dv">250</span>, <span class="at">replace =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>                 <span class="at">x4 =</span> <span class="fu">sample</span>(<span class="dv">0</span><span class="sc">:</span><span class="dv">10</span><span class="sc">/</span><span class="dv">10</span>, <span class="dv">250</span>, <span class="at">replace =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>df<span class="sc">$</span>y <span class="ot">&lt;-</span> df<span class="sc">$</span>x1 <span class="sc">+</span> df<span class="sc">$</span>x4 <span class="sc">+</span> <span class="fu">rnorm</span>(<span class="dv">250</span>)</span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(df)</span></code></pre></div>
+<pre><code>## &#39;data.frame&#39;:    250 obs. of  5 variables:
+##  $ x1: num  0.461 0.404 0.522 0.896 0.51 ...
+##  $ x2: num  0.49 0.22 0.99 0.31 0.5 0.87 0.32 0.36 0.22 0.94 ...
+##  $ x3: num  0.113 0.353 0.711 0.232 0.825 0.906 0.558 0.448 0.603 0.784 ...
+##  $ x4: num  0.1 0.6 0.9 0.2 0.6 0.8 0.3 1 0.6 0.7 ...
+##  $ y : num  0.824 0.444 2.531 1.344 2.635 ...</code></pre>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co"># rpart</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>rp_model <span class="ot">&lt;-</span> <span class="fu">rpart</span>(y<span class="sc">~</span>., <span class="at">data=</span>df)</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a><span class="fu">varImp</span>(rp_model)</span></code></pre></div>
+<pre><code>##      Overall
+## x1 1.1982394
+## x2 1.3662639
+## x3 0.9649745
+## x4 0.8960316</code></pre>
+<p>We can see the tree mostly uses x1 to split and x4 the least. Though x2 and x3 are not used to generate target but they are also used by tree to split. With this simulation, it is evident here that there is a selection bias in the tree model where favored predictors have more distinct values.</p>
 </div>
 <div id="exercise-8.3" class="section level1">
 <h1>Exercise 8.3</h1>
