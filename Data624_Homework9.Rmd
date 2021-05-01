@@ -28,6 +28,10 @@ library(party)
 library(gbm)
 library(Cubist)
 library(rpart)
+library(AppliedPredictiveModeling)
+library(tidyverse)
+library(naniar)
+library(rpart.plot)
 ```
 
 
@@ -212,17 +216,367 @@ Increasing the interaction depth would include more predictors and result to spr
 Refer to Exercises 6.3 and 7.5 which describe a chemical manufacturing process. Use the same data imputation, data splitting, and pre-processing steps as before and train several tree-based models:
 
 
+
+
+```{r}
+data(ChemicalManufacturingProcess)
+```
+
+
+```{r}
+glimpse(ChemicalManufacturingProcess)
+```
+
+
+
+The matrix `processPredictors` contains the 57 predictors (12 describing the input biological material and 45 describing the process predictors) for the 176 manufacturing runs. yield contains the percent yield for each run.
+
+
+We will first see all the variables having any of the missing values. We have used below complete.cases() function to find the the missing values.
+
+
+```{r}
+# columns having missing values
+colnames(ChemicalManufacturingProcess)[!complete.cases(t(ChemicalManufacturingProcess))]
+```
+
+
+So there are 28 columns having missing values. Here is the plot for missing values of all the predictors.
+
+
+```{r fig1, fig.height=10, fig.width=10}
+gg_miss_var(ChemicalManufacturingProcess[,-c(1)]) + labs(y = "Sorted by Missing values")
+```
+
+We will next use preProcess() method to impute the missing values using knnImpute (K nearest neighbor).
+
+```{r}
+pre.proc <- preProcess(ChemicalManufacturingProcess[,c(-1)], method = "knnImpute")
+chem_df <- predict(pre.proc, ChemicalManufacturingProcess[,c(-1)])
+```
+
+
+```{r fig2}
+# columns having missing values
+colnames(chem_df)[!complete.cases(t(chem_df))]
+```
+
+
+
+We will first filter out the predictors that have low frequencies using the `nearZeroVar` function from the caret package. After applying this function we see 1 column is removed and 56  predictors are left for modeling.
+
+```{r}
+chem.remove.pred <- nearZeroVar(chem_df)
+chem_df <- chem_df[,-chem.remove.pred]
+length(chem.remove.pred) %>% paste('columns are removed. ', dim(chem_df)[2], ' predictors are left for modeling.') %>% print()
+```
+
+
+We will now look into pairwise correlation above 0.90 and remove the predictors having correlation with cutoff 0.90.
+
+
+```{r}
+chem.corr.90 <- findCorrelation(cor(chem_df), cutoff=0.90)
+chem_df <- chem_df[,-chem.corr.90]
+length(chem.corr.90) %>% paste('columns having correlation 0.90 or more are removed. ', dim(chem_df)[2], ' predictors are left for modeling.') %>% print()
+```
+
+
+Next step is to split the data in training and testing set. We reserve 70% for training and 30% for testing. After split we will fit elastic net model.
+
+
+```{r}
+set.seed(786)
+
+pre.proc <- preProcess(chem_df, method = c("center", "scale"))
+chem_df <- predict(pre.proc, chem_df)
+
+# partition
+chem.part <- createDataPartition(ChemicalManufacturingProcess$Yield, p=0.80, list = FALSE)
+
+# predictor
+X.train <- chem_df[chem.part,]
+X.test <- chem_df[-chem.part,]
+
+# response 
+y.train <- ChemicalManufacturingProcess$Yield[chem.part]
+y.test <- ChemicalManufacturingProcess$Yield[-chem.part]
+
+
+```
+
+## Tree-based models
+
+### Single tree
+
+
+```{r}
+set.seed(317)
+
+singletree.model <- train(x=X.train,
+                          y=y.train,
+                          method = "rpart",
+                          tuneLength = 10,
+                          trControl = trainControl(method = "cv"))
+
+singletree.model
+```
+
+
+```{r}
+singletree.model$bestTune
+```
+
+
+```{r}
+# plot RMSE
+plot(singletree.model)
+```
+
+
+```{r}
+data.frame(Rsquared=singletree.model[["results"]][["Rsquared"]][as.numeric(rownames(singletree.model$bestTune))],
+           RMSE=singletree.model[["results"]][["RMSE"]][as.numeric(rownames(singletree.model$bestTune))])
+```
+
+RMSE was used to select the optimal model using the smallest value. The final value used for the model was cp = 0.0636 which results the $R^2$ as 0.43 and RMSE as 1.50.
+
+
+### Random Forest
+
+
+```{r}
+set.seed(317)
+
+randfrst.model <- train(x=X.train,
+                          y=y.train,
+                          method = "rf",
+                          tuneLength = 10,
+                          trControl = trainControl(method = "cv"))
+
+randfrst.model
+```
+
+
+```{r}
+randfrst.model$bestTune
+```
+
+
+```{r}
+# plot RMSE
+plot(randfrst.model)
+```
+
+
+```{r}
+data.frame(Rsquared=randfrst.model[["results"]][["Rsquared"]][as.numeric(rownames(randfrst.model$bestTune))],
+           RMSE=randfrst.model[["results"]][["RMSE"]][as.numeric(rownames(randfrst.model$bestTune))])
+```
+
+RMSE was used to select the optimal model using the smallest value. The final value used for the model was mtry = 21. The best tuned model produces the $R^2$ as 0.65 and RMSE as 1.18.
+
+
+
+### Boosted tree
+
+
+```{r}
+set.seed(317)
+
+# boosting regression trees via stochastic gradient boosting machines
+
+gbmGrid <- expand.grid(interaction.depth = seq(1, 7, by = 2), 
+                       n.trees = seq(100, 1000, by = 50), 
+                       shrinkage = 0.1,
+                       n.minobsinnode = 5)
+
+gbm.model <- train(x=X.train,
+                   y=y.train,
+                   method = "gbm",
+                   tuneGrid = gbmGrid, 
+                   trControl = trainControl(method = "cv"),
+                   verbose = FALSE)
+
+gbm.model
+```
+
+
+```{r}
+gbm.model$bestTune
+```
+
+
+```{r}
+# plot RMSE
+plot(gbm.model)
+```
+
+
+
+
+```{r}
+data.frame(Rsquared=gbm.model[["results"]][["Rsquared"]][as.numeric(rownames(gbm.model$bestTune))],
+           RMSE=gbm.model[["results"]][["RMSE"]][as.numeric(rownames(gbm.model$bestTune))])
+```
+
+RMSE was used to select the optimal model using the smallest value. The final values used for the model were n.trees = 600, interaction.depth = 5, shrinkage = 0.1 and n.minobsinnode = 5. Tuning parameters 'shrinkage' and 'n.minobsinnode' were held constant at 0.1 and 5 respectively. The best tuned model produces the $R^2$ as 0.64 and RMSE as 1.19.
+
+
+### Cubist
+
+
+
+
+```{r}
+set.seed(317)
+
+cubist.model <- train(x=X.train,
+                          y=y.train,
+                          method = "cubist",
+                          tuneLength = 10,
+                          trControl = trainControl(method = "cv"))
+
+cubist.model
+```
+
+
+```{r}
+cubist.model$bestTune
+```
+
+
+```{r}
+# plot RMSE
+plot(cubist.model)
+```
+
+
+```{r}
+data.frame(Rsquared=cubist.model[["results"]][["Rsquared"]][as.numeric(rownames(cubist.model$bestTune))],
+           RMSE=cubist.model[["results"]][["RMSE"]][as.numeric(rownames(cubist.model$bestTune))])
+```
+
+
+RMSE was used to select the optimal model using the smallest value. The final values used for the model were committees = 20 and neighbors = 5. The best tuned model produces the $R^2$ as 0.71 and RMSE as 1.01. Among all we see Cubist model has the best $R^2$ value on training data.
+
+
+
 ## (a)
 Which tree-based regression model gives the optimal resampling and test set performance?
+
+
+### Optimal resampling
+
+```{r}
+set.seed(317)
+summary(resamples(list(SingTree=singletree.model, RandFrst=randfrst.model, Boosting=gbm.model, Cubist=cubist.model)))
+```
+
+### Test set performance
+
+```{r}
+set.seed(317)
+sngpred <- predict(singletree.model, newdata = X.test)
+rfpred <- predict(randfrst.model, newdata = X.test)
+gbmpred <- predict(gbm.model, newdata = X.test)
+cubpred <- predict(cubist.model, newdata = X.test)
+
+
+data.frame(rbind(SingTree=postResample(pred=sngpred,obs = y.test),
+                 RandFrst=postResample(pred=rfpred,obs = y.test),
+                 Boosting=postResample(pred=gbmpred,obs = y.test),
+                 Cubist=postResample(pred=cubpred,obs = y.test)))
+
+```
+
+
+Seeing the results above, it is evident that the Cubist model predicted the test responses with best accuracy $R^2$=0.76 and RMSE=0.81
 
 
 
 ## (b)
 Which predictors are most important in the optimal tree-based regression model? Do either the biological or process variables dominate the list? How do the top 10 important predictors compare to the top 10 predictors from the optimal linear and nonlinear models?
 
+```{r}
+varImp(cubist.model)
+```
+
+
+We can see here too that ManufacturingProcess variables dominates the list but ranks seem different between linear and non linear models.
+
+It was stated earlier that svm model performed best among nonlinear regression models.
+
+
+```{r}
+set.seed(317)
+# tune svm among non linear models
+svmmodel <- train(X.train,
+                y.train,
+                method = "svmRadial",
+                preProcess = c("center","scale"),
+                tuneLength = 10,
+                trControl = trainControl(method = "cv"))
+
+varImp(svmmodel)
+```
+
+
+
+It was stated earlier that elasticnet model that best fitted the data among linear models. 
+
+
+```{r}
+set.seed(317)
+# tune elastic net model among linear models
+chem.enet.fit <- train(x=X.train, 
+                       y=y.train,
+                       method="glmnet",
+                       metric="Rsquared",
+                       trControl=trainControl(method = "cv",number=10),
+                       tuneLength = 5
+                 )
+
+
+varImp(chem.enet.fit)
+```
+
+
+From the importance predictors above from Treebased: Cubist, linear: elasticnet and nonlinear: svm, we can see that rank ManufacturingProcess32 remains on top. Among all, it is evident that ManufacturingProcess predictors dominate the list. Below are the plots of top 10 Imp predictors from these 3 models.
+
+
+```{r, fig.align='center', fig.width=15}
+plt1 <- plot(varImp(cubist.model), top=10, main="Cubist")
+plt2 <- plot(varImp(svmmodel), top=10, main="SVM")
+plt3 <- plot(varImp(chem.enet.fit), top=10, main="ElasticNet")
+gridExtra::grid.arrange(plt1, plt2, plt3, ncol=3)
+```
+
+
+
+
 
 ## (c)
 Plot the optimal single tree with the distribution of yield in the terminal nodes. Does this view of the data provide additional knowledge about the biological or process predictors and their relationship with yield?
+
+
+```{r}
+rpart.plot(singletree.model$finalModel)
+```
+
+The plot above is for optimal single tree model and it depicts that split begins with `ManufacturingProcess32` and if it is less than 0.19, the yield will be 39 else the yield would be 42. This view of the data does provide additional knowledge about the process predictors and their relationship with yield; the higher value of `ManufacturingProcess32` leads to higher yield and vice versa.
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
