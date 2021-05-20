@@ -1,1 +1,796 @@
+---
+title: "Data624 - Project2"
+author: "Amanda Arce, Jatin Jain, Amit Kapoor"
+date: "5/2/2021"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    toc: yes
+  html_document:
+    fig_width: 15
+    highlight: pygments
+    number_sections: no
+    theme: flatly
+    toc: yes
+    toc_float: yes
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, error=FALSE, warning=FALSE, message=FALSE, fig.align="center", fig.width = 10)
+```
+
+
+
+
+
+# Overview
+ABC Beverage has new regulations in place and the leadership team requires the data scientists team to understand the  manufacturing process, the predictive factors and be able to report to them predictive model of PH. The selection of model depends upon various factors like model accuracy, data relevance, cross validation etc.
+
+
+# R packages
+We will use `r` for data modeling. All packages used for data exploration, visualization, preparation and modeling are listed in Code Appendix.
+
+
+```{r libraries, include=FALSE, warning=FALSE, message=FALSE}
+# Libraries
+library(readxl)
+library(tidyverse)
+library(caret)
+library(doParallel)
+library(DataExplorer)
+library(psych)
+library(mice)
+library(MASS)
+library(caret)
+library(AppliedPredictiveModeling)
+library(lars)
+library(pls) 
+library(earth)
+library(xgboost)
+library(Cubist)
+library(randomForest)
+library(DT)
+
+set.seed(624)
+```
+
+```{r}
+
+```
+
+
+# Data Exploration
+
+We will first get the historical dataset, provided in excel and use it to analyze and eventually predict the PH of beverages.
+
+```{r data}
+# download training data from git repo
+temp.file <- tempfile(fileext = ".xlsx")
+download.file(url="https://github.com/DATA624-PredictiveAnalytics-Project2/Project2/blob/main/StudentData.xlsx?raw=true", 
+              destfile = temp.file, 
+              mode = "wb", 
+              quiet = TRUE)
+
+# read excel for training data
+train.df <- read_excel(temp.file, skip=0)
+
+# download testing data from git repo
+download.file(url="https://github.com/DATA624-PredictiveAnalytics-Project2/Project2/blob/main/StudentEvaluation.xlsx?raw=true", 
+              destfile = temp.file, 
+              mode = "wb", 
+              quiet = TRUE)
+
+# read excel for testing data
+test.df <- read_excel(temp.file, skip=0)
+
+
+# transform Brand.code to factor
+train.df$`Brand Code` = as.factor(train.df$`Brand Code`)
+test.df$`Brand Code` = as.factor(test.df$`Brand Code`)
+```
+
+## Data summary
+There are 31 predictor variables that are numeric and 1 predictor variable `Brand Code` which is factor. The training dataset has 2,571 observations.
+
+```{r, glimpse}
+glimpse(train.df)
+```
+
+
+```{r, desc}
+describe(train.df) %>% dplyr::select(-vars, -trimmed, -mad, -se)
+```
+
+Based of above description, we can see the dataset has missing values so it would need imputation. The predictors `Oxygen Filler`, `MFR`, `Filler Speed` and `Temperature` seems highly skewed and would require transformation. This could be seen in below histogram plots as well. 
+
+## Variables Distribution
+Below we have shown the distribution of dataset variables. There are 2 sets of histograms; the one in red is natural distribution and the ones in green are logarithmic disctribution
+
+```{r, hist}
+plot_histogram(train.df, geom_histogram_args = list("fill" = "tomato4"))
+```
+
+```{r, log10-hist}
+# log histograms
+plot_histogram(train.df, scale_x = "log10", geom_histogram_args = list("fill" = "springgreen4"))
+```
+
+
+## Missing Data
+
+The summary and following graphs show the missing data in training dataset. The plot below shows more than 8% data is missing for `MFR` variable. Next feature that has missing data is `Filler Speed` which shows more than 2% missing data. The missing data will be handled through imputation.
+
+```{r, colsum}
+colSums(is.na(train.df))
+```
+
+
+```{r, pltmiss}
+plot_missing(train.df[-1])
+```
+
+
+
+## Correlation
+
+below plot shows the correlation among numeric variables in the dataset. We can see few variables are highly correlated. We will handle the pairwise predictors that has correlation above 0.90 in data preparation section.
+
+```{r, corr}
+forcorr <- train.df[complete.cases(train.df),-1]
+corrplot::corrplot(cor(forcorr), method = 'ellipse', type = 'lower')
+```
+
+## Outliers
+In this section we will check the outliers in the data. An outlier is an observation that lies an unusual distance from other values in a random sample.These outlier could impact predictions so will be handled through imputation 
+
+```{r}
+
+# boxplot 
+par(mfrow = c(3,4))
+for(i in colnames(train.df[-1])){
+boxplot(train.df[,i], xlab = names(train.df[i]),
+  main = names(train.df[i]), col="blue", horizontal = T)
+}
+```
+
+
+
+# Data Preparation
+
+## Handling missing and outliers
+The very first in data preparation we will perform is handling missing data and outliers through imputation. We will use mice package to perform imputation here. MICE (Multivariate Imputation via Chained Equations) is one of the commonly used package for this activity. It creates multiple imputations for multivariate missing data. Also we will perform `nearZeroVar` to see if a variable has very little change or variation and not useful for prediction. If we founf any predictor variable satisfying this condition we would remove it.
+
+
+```{r train-impute}
+set.seed(317)
+
+# Training set
+train.df.clean <- mice(data.frame(train.df), method = 'rf', m=2, maxit = 2, print=FALSE)
+train.df.clean <- complete(train.df.clean)
+
+nzv_preds <- nearZeroVar(train.df.clean)
+train.df.clean <- train.df.clean[,-nzv_preds]
+```
+
+```{r test-impute}
+set.seed(317)
+
+# Testing set
+test.df.clean <- mice(data.frame(test.df), method = 'rf', m=2, maxit = 2, print=FALSE)
+test.df.clean <- complete(test.df.clean)
+```
+
+
+
+
+## Create Dummy Variables
+The variable Brand Code is a categorical variable, having 4 classes (A, B, C, and D). For modeling, we got to convert into set of dummy variables. We will use `dummyVars` function for this purpose that creates a full set of dummy variables.
+
+```{r dv-train}
+set.seed(317)
+dum.brandcode <- dummyVars(PH ~ Brand.Code, data = train.df.clean)
+dum.train.predict <- predict(dum.brandcode, train.df.clean)
+train.df.clean <- cbind(dum.train.predict, train.df.clean) %>% dplyr::select(-Brand.Code)
+```
+
+```{r dv-test}
+set.seed(317)
+dum.brandcode <- dummyVars( ~ Brand.Code, data = test.df.clean)
+dum.test.predict <- predict(dum.brandcode, test.df.clean)
+test.df.clean <- cbind(dum.test.predict, test.df.clean) %>% dplyr::select(-Brand.Code)
+```
+
+
+
+## Correlation
+Next step is to remove highly correlated predictor variables. we will use the cutoff as 0.90 here.
+
+
+```{r}
+highCorr <- findCorrelation(cor(train.df.clean), 0.90)
+train.df.clean <- train.df.clean[, -highCorr]
+```
+
+
+## Preprocess using transformation
+
+In this step we will use caret `preprocess` method using transformation as `YeoJohnson` which applies Yeo-Johnson transformation, like a BoxCox, but values can be negative as well.
+
+```{r transform-train}
+set.seed(317)
+preproc_traindf <- preProcess(train.df.clean, method = "YeoJohnson")
+train.df.clean <- predict(preproc_traindf, train.df.clean)
+```
+
+```{r transform-test}
+set.seed(317)
+preproc_testdf <- preProcess(test.df.clean, method = "YeoJohnson")
+test.df.clean <- predict(preproc_testdf, test.df.clean)
+```
+
+
+```{r}
+colnames(test.df.clean)
+```
+
+
+## Training and Test Partition
+Finally in this step for data preparation we will partition the training dataset for training and validation using `createDataPartition` method from `caret` package. We will reserve 75% for training and rest 25% for validation purpose.
+
+
+```{r}
+set.seed(317)
+
+partition <- createDataPartition(train.df.clean$PH, p=0.75, list = FALSE)
+
+# training/validation partition for independent variables
+X.train <- train.df.clean[partition, ] %>% dplyr::select(-PH)
+X.test <- train.df.clean[-partition, ] %>% dplyr::select(-PH)
+
+# training/validation partition for dependent variable PH
+y.train <- train.df.clean$PH[partition]
+y.test <- train.df.clean$PH[-partition]
+```
+
+
+
+
+
+
+
+
+
+
+The variable Brand Code is a categorical variable, having 4 classes (A, B, C, and D). We opt to use the “one-hot” encoding scheme for this variable, creating 5 new variables for the data: BrandCodeA, BrandCodeB, BrandCodeC, BrandCodeD, and BrandCodeNA.
+
+```{r}
+# One-hot encoding the categorical variable `Brand Code`
+
+train.df$`Brand Code` <- addNA(train.df$`Brand Code`)
+test.df$`Brand Code` <- addNA(test.df$`Brand Code`)
+brandCodeTrain <- predict(dummyVars(~`Brand Code`, data=train.df), train.df)
+brandCodeTest <- predict(dummyVars(~`Brand Code`, data=test.df), test.df)
+head(brandCodeTrain, 10)
+```
+
+```{r}
+head(train.df$`Brand Code`, 10)
+```
+
+```{r}
+head(brandCodeTest, 10)
+```
+
+```{r}
+head(test.df$`Brand Code`, 10)
+```
+
+```{r}
+train <- cbind(brandCodeTrain, subset(train.df, select=-c(`Brand Code`)))
+test <- cbind(brandCodeTest, subset(test.df, select=-c(`Brand Code`)))
+```
+
+White spaces and special characters in the column names are removed so they does not cause issues in some of the R packages.
+
+```{r}
+# Remove special symbols (white space and `) in names
+
+names(train) <- gsub(patter=c(' |`'), replacement='', names(train))
+names(test) <- gsub(patter=c(' |`'), replacement='', names(test))
+```
+
+
+There are a few rows with target variable (PH) missing. These rows are removed, since they cannot be used for training.
+
+```{r}
+# Remove rows in training set with missing target variables
+#train <- train[complete.cases(train$PH),] 
+```
+
+```{r}
+train <- train %>% na.omit()
+```
+
+There is one near-zero-variance variable in the data:
+
+```{r}
+# Check near-zero-variance variables
+nearZeroVar(train, names=T)
+```
+
+
+Below, we remove the near-zero-variance predictor, and separate the predictors and target:
+
+```{r}
+# Separate the predictors and target, and remove nzv variable
+xTrain <- subset(train, select=-c(PH,`HydPressure1`)) %>% as.data.frame()
+xTest <- subset(test, select=-c(PH,`HydPressure1`)) %>% as.data.frame()
+yTrain <- train$PH
+```
+
+The train function from the caret package is used to tune the models. The 5-fold cross validation scheme is used to estimate the model performance based on their RMSE. Below, we create the folds and set up the train control:
+
+```{r}
+set.seed(1)
+cvFolds <- createFolds(yTrain, k=5)
+trControl <- trainControl(verboseIter=T,
+                          method='cv', 
+                          number=5,
+                          index=cvFolds)
+```                      
+                          
+For the missing values, we experiment with three different imputation algorithms provided in the preProcess function:
+
+  * KNN imputation
+  * Bagged trees imputation
+  * Median imputation
+  
+As will be seen in the “Linear Models” section below, the choice of imputation method does not seem to affect the prediction performance much. We opt to use the knnImpute method due to its high efficiency.
+
+For the linear and non-linear models, the pre-processing step also include centering and scaling (standardizing), so that the variables all have a mean of 0 and standard deviation of 1. For the tree-based models, this step is omitted, since tree models work fine without this step.
+
+The caret package supports parallel processing (multi-core training). This capability significantly lowers the training time:
+
+```{r}
+# Set up and start multi-core processing
+cl <- makePSOCKcluster(5)
+registerDoParallel(cl)
+```
+
+
+
+# Build Models
+
+
+
+
+```{r}
+# Boosted Tree Ensemble via XGBoost
+# this section takes 10 min to complete
+# XGboost works with using the xgb.DMatrix function
+# Creating a cross validation control
+xgb_trcontrol = trainControl(
+  method = "cv",
+  number = 5,  
+  allowParallel = TRUE,
+  verboseIter = FALSE,
+  returnData = FALSE
+)
+# Setting up a grid search for the best parameters
+xgbGrid <- expand.grid(nrounds = c(100,200),  # this is n_estimators above
+                       max_depth = c(10, 15, 20, 25),
+                       colsample_bytree = seq(0.5, 0.9, length.out = 5),
+                       ## The values below are default values in the sklearn-api. 
+                       eta = 0.1,
+                       gamma=0,
+                       min_child_weight = 1,
+                       subsample = 1
+                      )
+
+set.seed(123) 
+
+#xgb_model = train(
+#  xTrain, as.factor(yTrain),  
+#  trControl = xgb_trcontrol,
+#  tuneGrid = xgbGrid,
+#  method = "xgbTree"
+#)
+
+# Testing against data set.
+#predicted <- predict(xgb_model, xTest)
+#table(predicted)
+
+
+
+#randomForest 
+# Testing on data set
+#rf_model <- randomForest(x = xTrain, y = as.factor(yTrain), ntree = 500)
+
+#xTest <- xTest %>% na.omit()
+
+#predicted <- predict(rf_model, xTest)
+#table(predicted)
+
+#rf_varimp <- varImp(rf_model)
+#rf_varimp
+#varImpPlot(rf_model)
+
+```
+
+
+
+## Linear Regression
+
+
+### Simple Linear Regression
+
+
+```{r}
+set.seed(317)
+
+lm_model <- lm(y.train ~ ., data = X.train)
+summary(lm_model)
+```
+
+
+### Partial Least Squares
+
+
+```{r}
+# tune pls model 
+pls_model <- train(x=X.train,
+                 y=y.train,
+                 method="pls",
+                 metric="Rsquared",
+                 tuneLength=10, 
+                 trControl=trainControl(method = "cv")
+                 )
+
+pls_model
+```
+
+```{r}
+plot(pls_model)
+```
+
+```{r}
+pls_model$results %>% 
+  filter(ncomp == pls_model$bestTune$ncomp) %>% 
+  dplyr::select(ncomp,RMSE,Rsquared)
+```
+
+
+## Non Linear Regression
+
+### MARS
+MARS creates a piecewise linear model which provides an intuitive stepping block into non-linearity after grasping the concept of multiple linear regression. MARS provided a convenient approach to capture the nonlinear relationships in the data by assessing cutpoints (knots) similar to step functions. The procedure assesses each data point for each predictor as a knot and creates a linear regression model with the candidate features
+
+```{r mars, warning=FALSE, message=FALSE}
+set.seed(317)
+marsGrid <- expand.grid(.degree=1:2, .nprune=2:30)
+mars_model <- train(x=X.train, 
+                    y=y.train,
+                    method = "earth",
+                    tuneGrid = marsGrid,
+                    trControl = trainControl(method = "cv"))
+
+```
+
+
+```{r}
+# final parameters
+mars_model$bestTune
+```
+
+```{r}
+# plot RMSE
+plot(mars_model)
+```
+
+```{r}
+summary(mars_model$finalModel)
+```
+
+```{r}
+data.frame(Rsquared=mars_model[["results"]][["Rsquared"]][as.numeric(rownames(mars_model$bestTune))],
+           RMSE=mars_model[["results"]][["RMSE"]][as.numeric(rownames(mars_model$bestTune))])
+```
+
+
+
+
+### Support Vector Machines
+The objective of the support vector machine algo is to find a hyperplane in an N-dimensional space (N being the number of features) that classifies the data points. Here we will use training using svmRadial method
+
+```{r svm, warning=FALSE, message=FALSE}
+set.seed(317)
+svm_model <- train(x=X.train, 
+                   y=y.train,
+                   method = "svmRadial",
+                   tuneLength = 10,
+                   trControl = trainControl(method = "cv"))
+
+svm_model
+```
+
+```{r}
+summary(svm_model$finalModel)
+```
+
+
+```{r}
+# plot RMSE
+plot(svm_model)
+```
+
+```{r}
+data.frame(Rsquared=svm_model[["results"]][["Rsquared"]][as.numeric(rownames(svm_model$bestTune))],
+           RMSE=svm_model[["results"]][["RMSE"]][as.numeric(rownames(svm_model$bestTune))])
+```
+
+## Trees
+
+### Single Tree
+
+```{r st, warning=FALSE, message=FALSE}
+set.seed(317)
+
+st_model <- train(x=X.train,
+                  y=y.train,
+                  method = "rpart",
+                  tuneLength = 10,
+                  trControl = trainControl(method = "cv"))
+
+st_model
+```
+
+```{r}
+st_model$bestTune
+```
+
+
+
+```{r}
+# plot RMSE
+plot(st_model)
+```
+
+
+```{r}
+data.frame(Rsquared=st_model[["results"]][["Rsquared"]][as.numeric(rownames(st_model$bestTune))],
+           RMSE=st_model[["results"]][["RMSE"]][as.numeric(rownames(st_model$bestTune))])
+```
+
+
+
+
+### Bossted Tree
+
+```{r gbm, warning=FALSE, message=FALSE}
+set.seed(317)
+
+# boosting regression trees via stochastic gradient boosting machines
+
+gbmGrid <- expand.grid(interaction.depth = c(5,10), 
+                       n.trees = seq(100, 1000, by = 100), 
+                       shrinkage = 0.1,
+                       n.minobsinnode = c(5,10))
+
+gbm_model <- train(x=X.train,
+                   y=y.train,
+                   method = "gbm",
+                   tuneGrid = gbmGrid, 
+                   trControl = trainControl(method = "cv"),
+                   verbose = FALSE)
+
+gbm_model
+```
+
+
+```{r}
+gbm_model$bestTune
+```
+
+```{r}
+plot(gbm_model)
+```
+
+```{r}
+data.frame(Rsquared=gbm_model[["results"]][["Rsquared"]][as.numeric(rownames(gbm_model$bestTune))],
+           RMSE=gbm_model[["results"]][["RMSE"]][as.numeric(rownames(gbm_model$bestTune))])
+```
+
+
+### Random Forest
+
+```{r rf, warning=FALSE, message=FALSE}
+set.seed(317)
+
+rf_model <- train(x=X.train,
+                  y=y.train,
+                  method = "rf",
+                  tuneLength = 10,
+                  trControl = trainControl(method = "cv"))
+
+rf_model
+```
+
+
+```{r}
+rf_model$bestTune
+```
+
+```{r}
+plot(rf_model)
+```
+
+```{r}
+data.frame(Rsquared=rf_model[["results"]][["Rsquared"]][as.numeric(rownames(rf_model$bestTune))],
+           RMSE=rf_model[["results"]][["RMSE"]][as.numeric(rownames(rf_model$bestTune))])
+```
+
+### Cubist
+
+```{r cubist, warning=FALSE, message=FALSE}
+set.seed(317)
+
+cubist_model <- train(x=X.train,
+                      y=y.train,
+                      method = "cubist",
+                      tuneLength = 10,
+                      trControl = trainControl(method = "cv"))
+
+cubist_model
+```
+
+
+```{r}
+cubist_model$bestTune
+```
+
+```{r}
+plot(cubist_model)
+```
+
+
+
+```{r}
+data.frame(Rsquared=cubist_model[["results"]][["Rsquared"]][as.numeric(rownames(cubist_model$bestTune))],
+           RMSE=cubist_model[["results"]][["RMSE"]][as.numeric(rownames(cubist_model$bestTune))])
+```
+
+### XGB Tree
+
+```{r xgb, warning=FALSE, message=FALSE}
+set.seed(123) 
+
+xgb_trcontrol <- trainControl(
+  method = "cv",
+  number = 5,  
+  allowParallel = TRUE,
+  verboseIter = FALSE,
+  returnData = FALSE
+)
+
+# Setting up a grid search for the best parameters
+xgbGrid <- expand.grid(nrounds = c(100,200),  # this is n_estimators above
+                       max_depth = c(10, 15, 20, 25),
+                       colsample_bytree = seq(0.5, 0.9, length.out = 5),
+                       eta = 0.1,
+                       gamma=0,
+                       min_child_weight = 1,
+                       subsample = 1
+                      )
+
+
+
+xgb_model <- train(x=X.train,
+                  y=y.train,
+                  method = "xgbTree",
+                  trControl = xgb_trcontrol,
+                  tuneGrid = xgbGrid)
+
+xgb_model
+```
+
+
+```{r}
+xgb_model$bestTune
+```
+
+```{r}
+plot(xgb_model)
+```
+
+
+
+```{r}
+data.frame(Rsquared=xgb_model[["results"]][["Rsquared"]][as.numeric(rownames(xgb_model$bestTune))],
+           RMSE=xgb_model[["results"]][["RMSE"]][as.numeric(rownames(xgb_model$bestTune))])
+```
+
+
+# Select Model
+
+```{r}
+set.seed(317)
+summary(resamples(list(PLS=pls_model, MARS=mars_model, SVM=svm_model, RandFrst=rf_model,  Cubist=cubist_model, SingTree=st_model,Boosting=gbm_model)))
+#Boosting=gbm_model , XGB=xgb_model
+```
+
+
+```{r bwplot}
+bwplot(resamples(list(PLS=pls_model, MARS=mars_model, SVM=svm_model, RandFrst=rf_model,  Cubist=cubist_model, SingTree=st_model, Boosting=gbm_model)), main = "Models Comparison")
+```
+
+
+
+
+
+
+```{r prediction}
+set.seed(317)
+
+pls_pred <- predict(pls_model, newdata = X.test)
+mars_pred <- predict(mars_model, newdata = X.test)
+svm_pred <- predict(svm_model, newdata = X.test)
+rf_pred <- predict(rf_model, newdata = X.test)
+cubist_pred <- predict(cubist_model, newdata = X.test)
+st_pred<- predict(st_model, newdata = X.test)
+gbm_pred <- predict(gbm_model, newdata = X.test)
+
+data.frame(rbind(PLS=postResample(pred=pls_pred,obs = y.test),
+                 MARS=postResample(pred=mars_pred,obs = y.test),
+                 SVM=postResample(pred=svm_pred,obs = y.test),
+                 SingTree=postResample(pred=st_pred,obs = y.test),
+                 RandFrst=postResample(pred=rf_pred,obs = y.test),
+                 Boosting=postResample(pred=gbm_pred,obs = y.test),
+                 Cubist=postResample(pred=cubist_pred,obs = y.test)))
+```
+
+# Prediction
+
+
+```{r}
+head(test.df.clean)
+```
+
+```{r pred-PH}
+# remove PH from evaluation data
+test.df.clean <- test.df.clean %>% dplyr::select(-PH)
+
+# predict final PH values
+test.df.clean$PH <- predict(rf_model, newdata = test.df.clean)
+```
+
+```{r}
+# PH predictions
+test.df.clean$PH %>% tibble::enframe(name = NULL) %>% datatable()
+```
+
+```{r save-PH}
+write.csv(test.df.clean$PH, "StudentEvaluations_PHPredictions.csv")
+```
+
+
+# Conclusion
+
+
+
+# References
+
+* https://machinelearningmastery.com/pre-process-your-dataset-in-r/
+* https://www.analyticsvidhya.com/blog/2016/03/tutorial-powerful-packages-imputing-missing-values/
+* Applied Predictive Modeling. Max Kuhn and Kjell Johnson
+
+
+# Code Appendix
+
+```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
+
+
+
+
 
