@@ -155,7 +155,7 @@ boxplot(train.df[,i], xlab = names(train.df[i]),
 # Data Preparation
 
 ## Handling missing and outliers
-The very first in data preparation we will perform is handling missing data and outliers through imputation. We will use mice package to perform imputation here. MICE (Multivariate Imputation via Chained Equations) is one of the commonly used package for this activity. It creates multiple imputations for multivariate missing data. Also we will perform `nearZeroVar` to see if a variable has very little change or variation and not useful for prediction. If we founf any predictor variable satisfying this condition we would remove it.
+The very first in data preparation we will perform is handling missing data and outliers through imputation. We will use mice package to perform imputation here. MICE (Multivariate Imputation via Chained Equations) is one of the commonly used package for this activity. It creates multiple imputations for multivariate missing data. Also we will perform `nearZeroVar` to see if a variable has very little change or variation and not useful for prediction. If we found any predictor variable satisfying this condition we would remove it.
 
 
 ```{r train-impute}
@@ -637,7 +637,7 @@ write.csv(test.df.clean$PH, "StudentEvaluations_PHPredictions.csv")
 
 # Conclusion
 
-After extracting the data from the given files, we did first perform data exploration which helped us to find missing data, correlation among the variables and outliers. Next we performed steps for data preparation that included handling missing and outliers through mice, creating dummy vars for a categorical variable Brand Code, remove highly correlated variables, transform data for Normality and finally data partition of 75% and 25% for training and validation respectively. We then trained various models using linear regression, non linear and Trees model. We finally founf the optimal model as Random Forest for predicting PH values for evaluation data. 
+After extracting the data from the given files, we did first perform data exploration which helped us to find missing data, correlation among the variables and outliers. Next we performed steps for data preparation that included handling missing and outliers through mice, creating dummy vars for a categorical variable Brand Code, remove highly correlated variables, transform data for Normality and finally data partition of 75% and 25% for training and validation respectively. We then trained various models using linear regression, non linear and Tree based models. We finally found the optimal model as Random Forest for predicting PH values for evaluation data. 
 
 We notice that all the values predicted are greater than 8. This value translates that the beverage made is alkaline. At the start of this study, we were not known about the nature of the ABC Beverage company i.e. what type of beverage manufacturer it was. But from this study we can conclude that this company mainly produces alkaline beverages like water, tea, fruit drinks and all.
 
